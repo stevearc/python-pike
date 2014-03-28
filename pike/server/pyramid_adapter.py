@@ -59,7 +59,7 @@ def includeme(config):
     # If pyramid_jinja2 has already been included, take care of the
     # configuration automatically
     try:
-        config.add_jinja2_extension('round_robin.pike.ext.JinjaExtension')
+        config.add_jinja2_extension('pike.ext.JinjaExtension')
         config.get_jinja2_environment().pike = env
     except AttributeError:
         pass
