@@ -2,7 +2,12 @@
 import six
 import copy
 from pike.exceptions import StopProcessing
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
+try:
+    from collections import OrderedDict
+except ImportError:  # pragma: no cover
+    # Python 2.6
+    from ordereddict import OrderedDict  # pylint: disable=F0401
 from hashlib import md5  # pylint: disable=E0611
 
 from .base import Node
