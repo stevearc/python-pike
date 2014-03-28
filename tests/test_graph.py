@@ -98,7 +98,7 @@ class TestGraph(unittest.TestCase):
         """ Graphs can be used as a context. Nodes are auto-registered. """
         with Graph('g') as graph:
             a = Node('a')
-        self.assertEqual(graph._nodes, [a])
+        self.assertEqual(graph.nodes, [a])
 
     def test_multi_sink(self):
         """ Ambiguous sink nodes cause validation error """

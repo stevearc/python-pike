@@ -5,7 +5,7 @@ import six
 import threading
 
 from .exceptions import ValidationError
-from .nodes import NoopNode, run_node, LinkNode, Edge
+from .nodes import NoopNode, run_node, LinkNode, Edge, SourceNode
 
 
 LOG = logging.getLogger(__name__)
@@ -133,10 +133,10 @@ class Graph(object):
 
     def __init__(self, name):
         self.name = name
-        self._nodes = []
+        self.nodes = []
         self._finalized = False
-        self.source = NoopNode()
-        self.sink = NoopNode()
+        self.source = None
+        self.sink = None
 
     def __repr__(self):
         return 'Graph(%s)' % self.name
@@ -145,6 +145,11 @@ class Graph(object):
         if getattr(self.graph_context, 'instance', None) is not None:
             raise RuntimeError(
                 "Cannot enter two graph contexts at the same time")
+        self._finalized = False
+        if self.source is None:
+            self.source = NoopNode()
+        if self.sink is None:
+            self.sink = NoopNode()
         Graph.graph_context.instance = self
         return self
 
@@ -194,12 +199,16 @@ class Graph(object):
             source_node = mymacro(files=pike.glob('/tmp', '*'))
 
         """
-        macro_kwargs = dict(((k, self._nodes.index(v)) for k, v in
+        macro_kwargs = dict(((k, self.nodes.index(v)) for k, v in
                              six.iteritems(kwargs)))
         return Macro(self, macro_kwargs)
 
     def __getitem__(self, key):
-        return self._nodes[key]
+        return self.nodes[key]
+
+    def source_nodes(self):
+        """ Get all :class:`~pike.SourceNode`s in the graph """
+        return [node for node in self.nodes if isinstance(node, SourceNode)]
 
     def add(self, node):
         """
@@ -213,7 +222,7 @@ class Graph(object):
         """
         if self._finalized:
             raise ValueError("Cannot add nodes after Graph has been finalized")
-        self._nodes.append(node)
+        self.nodes.append(node)
 
     def remove(self, node):
         """
@@ -228,12 +237,9 @@ class Graph(object):
         if self._finalized:
             raise ValueError("Cannot add nodes after Graph has been finalized")
         try:
-            self._nodes.remove(node)
+            self.nodes.remove(node)
         except ValueError:
             pass
-
-    def source_nodes(self):
-        return [node for node in self._nodes if not node.ein]
 
     def finalize(self):
         """ Mark the Graph as immutable and perform validation checks. """
@@ -242,10 +248,10 @@ class Graph(object):
 
         # Find source if none explicitly used
         if self.source.eout:
-            self._nodes.append(self.source)
+            self.nodes.append(self.source)
         else:
             self.source = None
-            for node in self._nodes:
+            for node in self.nodes:
                 if node.accepts_input and not node.ein:
                     if self.source is None:
                         self.source = node
@@ -255,10 +261,10 @@ class Graph(object):
 
         # Find sink if none explicitly used
         if self.sink.ein:
-            self._nodes.append(self.sink)
+            self.nodes.append(self.sink)
         else:
             self.sink = None
-            for node in self._nodes:
+            for node in self.nodes:
                 if len(node.outputs) > 0 and not node.eout:
                     if self.sink is None:
                         self.sink = node
@@ -269,13 +275,13 @@ class Graph(object):
         self.validate()
 
         try:
-            self._nodes = topo_sort(self._nodes)
+            self.nodes = topo_sort(self.nodes)
         except ValidationError:
             raise ValidationError("%s has at least one cycle!" % self)
 
     def validate(self):
         """ Validate all nodes in the graph. """
-        for node in self._nodes:
+        for node in self.nodes:
             node.validate(node != self.source)
 
     def run(self, *args, **kwargs):
@@ -293,7 +299,7 @@ class Graph(object):
             inputs[self.source] = (args, kwargs)
 
         sink_ret = None
-        for node in self._nodes:
+        for node in self.nodes:
             args, kwargs = inputs.get(node, ((), {}))
             ret = run_node(node, args, kwargs)
             if node == self.sink:

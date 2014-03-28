@@ -323,6 +323,30 @@ class Node(object):
         other.ein.append(edge)
         return edge
 
+    def insert_after(self, node, output_name=None, input_name=None):
+        """
+        Insert a node after this node, splicing in all edges.
+
+        Parameters
+        ----------
+        node : :class:`~.Node`
+            The node to insert after this one
+        output_name : str, optional
+            If provided, use this output for ``node`` in place of the output
+            used from the current node.
+        input_name : str, optional
+            If provided, use this input for ``node`` in place of the input
+            used for the node that comes after this one.
+
+        """
+        for edge in self.eout[:]:
+            self.eout.remove(edge)
+            iname = input_name or edge.input_name
+            self.connect(node, edge.output_name, iname)
+            edge.n2.ein.remove(edge)
+            oname = output_name or edge.output_name
+            node.connect(edge.n2, oname, edge.input_name)
+
     def __repr__(self):
         return 'Node(%s)' % self.name
 

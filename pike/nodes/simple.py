@@ -7,29 +7,7 @@ import six
 
 from .base import Node
 from pike.items import FileMeta, FileDataBlob
-from pike.util import recursive_glob, resource_spec, md5stream
-
-
-class GlobNode(Node):
-
-    """
-    Source node that creates a stream of files via glob matching.
-
-    The parameters are the same as :meth:`~pike.util.recursive_glob`
-
-    """
-
-    name = 'glob_source'
-
-    def __init__(self, root, patterns, prefix=''):
-        super(GlobNode, self).__init__()
-        self.root = resource_spec(root)
-        self.patterns = patterns
-        self.prefix = prefix
-
-    def process(self):
-        filenames = recursive_glob(self.root, self.patterns, self.prefix)
-        return [FileMeta(filename, self.root) for filename in filenames]
+from pike.util import resource_spec, md5stream
 
 
 class MergeNode(Node):
@@ -175,8 +153,6 @@ class WriteNode(Node):
     def __init__(self, base_dir=os.curdir, debug=False):
         super(WriteNode, self).__init__()
         self.base_dir = resource_spec(base_dir)
-        if not os.path.isabs(self.base_dir):
-            raise ValueError("Write directory must be an absolute path")
         self.debug = debug
 
     def process_one(self, item):

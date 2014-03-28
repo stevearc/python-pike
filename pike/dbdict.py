@@ -1,10 +1,10 @@
 """ From http://code.activestate.com/recipes/576642/ """
-
-import pickle
-import json
-import csv
 import os
-import shutil
+
+import csv
+import json
+from six.moves import cPickle as pickle  # pylint: disable=F0401
+
 from .util import atomic_open
 
 

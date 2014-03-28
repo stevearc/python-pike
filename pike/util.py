@@ -1,20 +1,20 @@
 """ Utilities for pike. """
-import shlex
-import tempfile
-import contextlib
-import shutil
-import functools
-import subprocess
-import logging
-import time
-from hashlib import md5  # pylint: disable=E0611
-from uuid import uuid1
-
-import six
-
 import fnmatch
 import locale
 import os
+import time
+
+import contextlib
+import functools
+import logging
+import shlex
+import shutil
+import six
+import subprocess
+import tempfile
+from hashlib import md5  # pylint: disable=E0611
+from uuid import uuid1
+
 
 LOG = logging.getLogger(__name__)
 
@@ -23,6 +23,9 @@ class memoize(object):  # pylint: disable=C0103
 
     """
     Memoize a function/method call.
+
+    Because of the way the caching works, this should only decorate functions
+    that only accept immutable types as arguments.
 
     Examples
     --------
@@ -46,19 +49,19 @@ class memoize(object):  # pylint: disable=C0103
         cls._expires.clear()
 
     def __call__(self, func):
-        self._caches[func] = {}
-        self._expires[func] = {}
+        cache = self._caches[func] = {}
+        expires = self._expires[func] = {}
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             """ Wrap the decorated function to check cache first. """
             key = (args, tuple(sorted(six.iteritems(kwargs))))
-            if time.time() <= self._expires[func].get(key, 0):
-                return self._caches[func][key]
+            if time.time() <= expires.get(key, 0):
+                return cache[key]
             else:
                 ret = func(*args, **kwargs)
-                self._caches[func][key] = ret
-                self._expires[func][key] = time.time() + self.timeout
+                cache[key] = ret
+                expires[key] = time.time() + self.timeout
                 return ret
 
         return wrapper

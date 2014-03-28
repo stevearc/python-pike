@@ -1,5 +1,7 @@
 """ Nodes for watching files for changes. """
+import six
 import copy
+from pike.exceptions import StopProcessing
 from collections import defaultdict, OrderedDict
 from hashlib import md5  # pylint: disable=E0611
 
@@ -33,9 +35,10 @@ class ChangeListenerNode(Node):
     name = 'change_listener'
     outputs = ('default', 'all')
 
-    def __init__(self):
+    def __init__(self, stop=True):
         super(ChangeListenerNode, self).__init__()
         self.checksums = {}
+        self.stop = stop
 
     def process(self, stream):
         changed = []
@@ -47,6 +50,8 @@ class ChangeListenerNode(Node):
                 self.checksums[item.fullpath] = fingerprint
                 changed.append(item)
             all_items.append(item)
+        if not changed and self.stop:
+            raise StopProcessing
         return {
             'default': changed,
             'all': all_items,
@@ -65,13 +70,14 @@ class CacheNode(Node):
         self.cache = defaultdict(OrderedDict)
 
     def process(self, default=None, **kwargs):
-        kwargs['default'] = default
+        if default is not None:
+            kwargs['default'] = default
         ret = {}
-        for stream, items in kwargs.iteritems():
+        for stream, items in six.iteritems(kwargs):
             for item in items:
                 self.cache[stream][item.fullpath] = item
             ret[stream] = []
-            for item in self.cache[stream].itervalues():
+            for item in six.itervalues(self.cache[stream]):
                 clone = copy.copy(item)
                 clone.data = FileDataBlob(clone.data.read())
                 ret[stream].append(clone)
@@ -79,5 +85,5 @@ class CacheNode(Node):
 
     def __copy__(self):
         clone = super(CacheNode, self).__copy__()
-        clone.cache = OrderedDict()
+        clone.cache = defaultdict(OrderedDict)
         return clone

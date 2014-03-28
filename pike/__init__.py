@@ -2,19 +2,20 @@
 Pike: A cross between a Pipe and Make
 
 TODO:
-* Pretty-print graphs (render to graphviz, render to ascii)
-* Environment can watch directory in background thread/process
+* Merge Environment and DebugEnvironment
+* Parallelize jobs
+* Command to clean deleted assets
 * Watching can use mtime instead of md5
-* While watching support file deletion (removing deleted files)
+* Pretty-print graphs (render to graphviz, render to ascii)
 
 """
 from .graph import Graph
-from .nodes import (Node, Edge, AliasNode, NoopNode, GlobNode, CoffeeNode,
-                    LessNode, MergeNode, UrlNode, SplitExtNode, WriteNode,
-                    ConcatNode, FilterNode, MapNode, XargsNode,
+from .nodes import (Node, Edge, AliasNode, NoopNode, SourceNode, GlobNode,
+                    CoffeeNode, LessNode, MergeNode, UrlNode, SplitExtNode,
+                    WriteNode, ConcatNode, FilterNode, MapNode, XargsNode,
                     ChangeListenerNode, CacheNode)
-from .env import Environment, DebugEnvironment
-from .exceptions import ValidationError
+from .env import Environment, DebugEnvironment, watch_graph
+from .exceptions import ValidationError, StopProcessing
 
 
 def includeme(config):

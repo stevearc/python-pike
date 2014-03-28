@@ -1,25 +1,14 @@
 """ Tests for pike.util """
-import os
-
-import shutil
-import tempfile
-
+from . import BaseFileTest
 from pike import util
 
 
-try:
-    import unittest2 as unittest  # pylint: disable=F0401
-except ImportError:
-    import unittest
-
-
-class TestFileMatch(unittest.TestCase):
+class TestFileMatch(BaseFileTest):
 
     """ Tests for recursive file glob matching """
 
     def setUp(self):
         super(TestFileMatch, self).setUp()
-        self.tempdir = tempfile.mkdtemp()
         self._make_files(
             'app.js',
             'widget.js',
@@ -28,20 +17,6 @@ class TestFileMatch(unittest.TestCase):
             'shop/models.js',
             'shop/util.js',
         )
-
-    def tearDown(self):
-        super(TestFileMatch, self).tearDown()
-        shutil.rmtree(self.tempdir)
-
-    def _make_files(self, *files):
-        """ Shortcut to create files on disk """
-        for filename in files:
-            filename = os.path.join(self.tempdir, filename)
-            basename = os.path.dirname(filename)
-            if not os.path.exists(basename):
-                os.makedirs(basename)
-            with open(filename, 'w') as ofile:
-                ofile.write('foo')
 
     def test_prefix(self):
         """ Can select files limited by directory prefix """
