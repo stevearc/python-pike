@@ -7,7 +7,7 @@ from pyramid.response import FileResponse
 from pyramid.settings import asbool
 
 import os
-from ..env import Environment, DebugEnvironment
+from ..env import Environment
 from ..graph import Graph
 from ..nodes import WriteNode, UrlNode, XargsNode
 
@@ -42,16 +42,13 @@ def includeme(config):
     config.add_view(serve_asset, route_name=path)
 
     with Graph('write-and-gen-url') as write_and_url:
-        WriteNode(output_dir) | UrlNode(path)
+        WriteNode(output_dir).connect(UrlNode(path))
 
     with Graph('gen-file-and-url') as default_output:
         XargsNode(write_and_url)
 
-    if watch:
-        cache_file = settings.get('pike.cache_file', '.pike-cache')
-        env = DebugEnvironment(cache_file)
-    else:
-        env = Environment()
+    cache_file = settings.get('pike.cache_file', '.pike-cache')
+    env = Environment(watch=watch, cache=cache_file)
     env.set_default_output(default_output)
     config.registry.pike_env = env
     config.add_directive('get_pike_env', lambda c: c.registry.pike_env)

@@ -321,6 +321,11 @@ class Graph(object):
                     kwargs[edge.input_name] = ret[edge.output_name]
         return sink_ret
 
+    def connect(self, *args, **kwargs):
+        """ Same operation as :meth:`~pike.Node.connect` """
+        link = LinkNode(self)
+        return link.connect(*args, **kwargs)
+
     def __mul__(self, output_name):
         if not isinstance(output_name, six.string_types):
             return NotImplemented

@@ -57,6 +57,43 @@ class ChangeListenerNode(Node):
             'all': all_items,
         }
 
+    def __copy__(self):
+        clone = super(ChangeListenerNode, self).__copy__()
+        clone.checksums = {}
+        return clone
+
+
+class ChangeEnforcerNode(Node):
+
+    """
+    Listen for inputs from :class:`~.ChangeListenerNode` and raise
+    :class:`~pike.StopProcessing` if none of the listeners have detected any
+    changes.
+
+    """
+
+    name = 'change_enforcer'
+    outputs = ('*')
+
+    def __init__(self):
+        super(ChangeEnforcerNode, self).__init__()
+
+    def process(self, **kwargs):
+        ret = {}
+        has_changes = False
+        for name, stream in six.iteritems(kwargs):
+            if name.endswith('_all'):
+                continue
+            if stream:
+                has_changes = True
+            if name + '_all' in kwargs:
+                ret[name] = kwargs[name + '_all']
+            else:
+                ret[name] = stream
+        if not has_changes:
+            raise StopProcessing
+        return ret
+
 
 class CacheNode(Node):
 

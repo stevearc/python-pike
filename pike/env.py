@@ -11,14 +11,15 @@ from .dbdict import PersistentDict
 from .exceptions import StopProcessing
 from .graph import Graph
 from .items import FileMeta
-from .nodes import FingerprintNode, ChangeListenerNode, CacheNode
+from .nodes import (FingerprintNode, ChangeListenerNode, ChangeEnforcerNode,
+                    CacheNode, Edge, NoopNode)
 from .util import resource_spec, memoize
 
 
 LOG = logging.getLogger(__name__)
 
 
-def watch_graph(graph, partial=False):
+def watch_graph(graph, partial=False, cache=None):
     """
     Construct a copy of a graph that will watch source nodes for changes.
 
@@ -32,14 +33,46 @@ def watch_graph(graph, partial=False):
 
     """
     new_graph = copy.deepcopy(graph)
-    output_name = None if partial else 'all'
     with new_graph:
-        for node in new_graph.source_nodes():
-            node.insert_after(ChangeListenerNode(), output_name=output_name)
+        # If we only pass through the changed files, we'll need a CacheNode at
+        # the end
         if partial:
             sink = CacheNode()
-            graph.sink | sink
-            graph.sink = sink
+            new_graph.sink.connect(sink)
+            new_graph.sink = sink
+            if cache is not None:
+                key = new_graph.name + '_cache'
+                if key in cache:
+                    sink.cache = cache[key]
+                else:
+                    cache[key] = sink.cache
+        enforcer = ChangeEnforcerNode()
+        for i, node in enumerate(new_graph.source_nodes()):
+            # Find the outbound edge of the source
+            if node.eout:
+                edge = node.eout[0]
+                edge.remove()
+            else:
+                # If source has no outbound edge, make one.
+                edge = Edge(n2=NoopNode())
+            # Funnel files through a change listener
+            listener = ChangeListenerNode(stop=False)
+            if cache is not None:
+                key = new_graph.name + '_listen_' + str(i)
+                if key in cache:
+                    listener.checksums = cache[key]
+                else:
+                    cache[key] = listener.checksums
+            node.connect(listener)
+            # Create a fan-in, fan-out with the changed files that goes through
+            # a ChangeEnforcer. That way processing will continue even if only
+            # one of the sources has changed files.
+            listener.connect(enforcer, input_name=str(i))
+            if not partial:
+                listener.connect(enforcer, output_name='all', input_name=str(i)
+                                 + '_all')
+            enforcer.connect(edge.n2, output_name=str(i),
+                             input_name=edge.input_name)
     return new_graph
 
 
@@ -50,13 +83,19 @@ class Environment(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, watch=False, cache=None):
+        self._disk_cache = None
         self._cache = {}
         self._graphs = {}
         self._gen_files = {}
+        if cache is not None:
+            self._disk_cache = PersistentDict(cache)
+            self._cache = self._disk_cache.setdefault('cache', {})
+            self._gen_files = self._disk_cache.setdefault('gen_files', {})
         self.default_output = None
+        self.watch = watch
 
-    def add(self, graph, ignore_default_output=False):
+    def add(self, graph, ignore_default_output=False, partial=False):
         """
         Add a graph to the Environment.
 
@@ -67,17 +106,21 @@ class Environment(object):
         ignore_default_output : bool, optional
             If True, will *not* run the ``default_output`` graph on the output
             of this graph (default False)
+        partial : bool, optional
+            This argument will be passed to :meth:`~.watch_graph`
 
         """
         if graph.name in self._graphs:
             raise KeyError("Graph '%s' already exists in environment!" %
                            graph.name)
-        if self.default_output is None or ignore_default_output:
-            self._graphs[graph.name] = graph
-        else:
+        if self.default_output is not None and not ignore_default_output:
             with Graph(graph.name + '-wrapper') as wrapper:
                 graph.connect(self.default_output, '*', '*')
-            self._graphs[graph.name] = wrapper
+            graph = wrapper
+        if self.watch:
+            graph = watch_graph(graph, partial, self._disk_cache)
+
+        self._graphs[graph.name] = graph
 
     def set_default_output(self, graph):
         """
@@ -114,20 +157,25 @@ class Environment(object):
             Same output as the graph
 
         """
-        if name not in self._cache or bust:
+        if bust or self.watch or name not in self._cache:
             LOG.info("Running %s", name)
             try:
                 results = self._graphs[name].run()
-                # Remove data to save memory
+                LOG.debug("Completed %s", name)
                 for items in six.itervalues(results):
                     for item in items:
                         if isinstance(item, FileMeta):
-                            del item.data
+                            # Remove data to save memory
+                            if hasattr(item, 'data'):
+                                del item.data
                             # (asset pipeline, location on disk)
-                            self._gen_files[item.filename] = (name, item.fullpath)
+                            self._gen_files[item.filename] = \
+                                (name, item.fullpath)
                 self._cache[name] = results
+                if self._disk_cache is not None:
+                    self._disk_cache.sync()
             except StopProcessing:
-                pass
+                LOG.debug("No changes for %s", name)
         return self._cache[name]
 
     def run_all(self, bust=False):
@@ -135,107 +183,11 @@ class Environment(object):
         for name in self._graphs:
             self.run(name, bust)
 
-    def lookup(self, path):
-        """
-        Get a generated asset path
-
-        Parameters
-        ----------
-        path : str
-            Relative path of the asset
-
-        Returns
-        -------
-        path : str or None
-            Absolute path of the generated asset (if it exists). If the path is
-            known to be invalid, this value will be None.
-
-        """
-        self.run_all()
-        if path not in self._gen_files:
-            return False
-        fullpath = self._gen_files[path][1]
-        return fullpath
-
-
-class DebugEnvironment(Environment):
-
-    """
-    Environment implementation that watches source files for changes.
-
-    When a Graph is added to the Environment, all source nodes inside the graph
-    will be monitored. When one or more of them have changes in their files,
-    the graph is run again.
-
-    Parameters
-    ----------
-    cache : str, optional
-        Name of the file to cache source file metadata in (default
-        '.pike-cache'). This file cache greatly speeds up server restarts
-        during development, but it may be disabled by passing in ``None``.
-
-    """
-
-    def __init__(self, cache='.pike-cache'):
-        super(DebugEnvironment, self).__init__()
-        if cache is None:
-            self._cache_file = None
-            self._disk_cache = {}
-        else:
-            self._cache_file = resource_spec(cache)
-            self._disk_cache = PersistentDict(self._cache_file)
-        self._gen_files = self._disk_cache.get('gen_files', {})
-        self._fingerprints = self._disk_cache.get('fingerprints', {})
-        self._cache = self._disk_cache.get('cache', {})
-        self._fingerprint_graphs = {}
-
-    def _save_cache(self):
-        """ Write the cache file """
-        if self._cache_file is None:
-            return
-        self._disk_cache['gen_files'] = self._gen_files
-        self._disk_cache['fingerprints'] = self._fingerprints
-        self._disk_cache['cache'] = self._cache
-        self._disk_cache.sync()
-
-    def add(self, graph, ignore_default_output=False):
-        super(DebugEnvironment, self).add(graph, ignore_default_output)
-        # Create another graph that fingerprints all the source nodes found
-        with Graph(graph.name + '-hash') as hash_graph:
-            finger = FingerprintNode()
-            for node in graph.source_nodes():
-                copy.copy(node).connect(finger)
-        self._fingerprint_graphs[graph.name] = hash_graph
-
-    def run_all(self, bust=False):
-        super(DebugEnvironment, self).run_all(bust)
-        self._save_cache()
-
-    def run(self, name, bust=False):
-        bust = bust or name not in self._cache
-        if not bust or name not in self._fingerprints:
-            new = self.fingerprint(name)
-            old = self._fingerprints.get(name)
-
-            if new != old:
-                LOG.info("'%s' fingerprint changed", name)
-                self._fingerprints[name] = new
-                bust = True
-
-        try:
-            results = super(DebugEnvironment, self).run(name, bust)
-        except Exception as e:
-            if hasattr(e, 'pipeline'):
-                e.message += '\n%s' % ' -> '.join((str(n) for n in
-                                                   reversed(e.pipeline)))
-            raise
-        if bust:
-            self._save_cache()
-        return results
-
     def run_forever(self, sleep=2, daemon=False):
         """
-        Run graphs on changes forever.
+        Rerun graphs forever, busting the env cache each time.
+
+        This is generally only useful if ``watch=True``.
 
         Parameters
         ----------
@@ -253,33 +205,37 @@ class DebugEnvironment(Environment):
             return thread
         while True:
             try:
-                self.run_all()
-                time.sleep(sleep)
+                self.run_all(bust=True)
             except KeyboardInterrupt:
                 break
             except Exception:
                 LOG.exception("Error while serving forever!")
-
-    @memoize(timeout=2)
-    def fingerprint(self, name):
-        """
-        Get the fingerprint for all the source files.
-
-        This is memoized because we check the sources every time we run a graph
-        OR attempt to :meth:`~.lookup` a file. That can happen quite a lot,
-        whereas source files are not likely to change more frequently than
-        every couple seconds.
-
-        """
-        LOG.debug("Fingerprinting %s", name)
-        graph = self._fingerprint_graphs[name]
-        return graph.run()['default']
+            time.sleep(sleep)
 
     def lookup(self, path):
-        self.run_all()
+        """
+        Get a generated asset path
 
-        if path in self._gen_files:
-            name, fullpath = self._gen_files[path]
-            self.run(name, not os.path.exists(fullpath))
-            return fullpath
-        return False
+        Parameters
+        ----------
+        path : str
+            Relative path of the asset
+
+        Returns
+        -------
+        path : str or None
+            Absolute path of the generated asset (if it exists). If the path is
+            known to be invalid, this value will be None.
+
+        """
+        if path not in self._gen_files:
+            if self.watch:
+                self.run_all(True)
+                if path not in self._gen_files:
+                    return None
+            else:
+                return None
+        name, fullpath = self._gen_files[path]
+        if self.watch and not os.path.exists(fullpath):
+            self.run(name, True)
+        return fullpath

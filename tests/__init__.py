@@ -34,21 +34,36 @@ class BaseFileTest(unittest.TestCase):
 
     def setUp(self):
         super(BaseFileTest, self).setUp()
+        self.prevdir = os.getcwd()
         self.tempdir = tempfile.mkdtemp()
+        os.chdir(self.tempdir)
 
     def tearDown(self):
         super(BaseFileTest, self).tearDown()
+        os.chdir(self.prevdir)
         shutil.rmtree(self.tempdir)
 
-    def _make_files(self, *files):
-        """ Shortcut to create files on disk """
+    def _make_files(self, *files, **kwargs):
+        """
+        Shortcut to create files on disk.
+
+        You can pass it filenames (they will contain the string 'foo') or
+        dictionaries mapping filenames to file data.
+
+        """
         for filename in files:
+            if isinstance(filename, dict):
+                self._make_files(**filename)
+            else:
+                self._make_files(**{filename: 'foo'})
+
+        for filename, data in six.iteritems(kwargs):
             filename = os.path.join(self.tempdir, filename)
             basename = os.path.dirname(filename)
             if not os.path.exists(basename):
                 os.makedirs(basename)
             with open(filename, 'w') as ofile:
-                ofile.write('foo')
+                ofile.write(data)
 
 # pylint: disable=E1101
 if six.PY3:  # pragma: no cover

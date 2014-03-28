@@ -2,10 +2,10 @@
 Pike: A cross between a Pipe and Make
 
 TODO:
-* Merge Environment and DebugEnvironment
 * Parallelize jobs
 * Command to clean deleted assets
 * Watching can use mtime instead of md5
+* Maybe get rid of FileDataFile?
 * Pretty-print graphs (render to graphviz, render to ascii)
 
 """
@@ -14,7 +14,7 @@ from .nodes import (Node, Edge, AliasNode, NoopNode, SourceNode, GlobNode,
                     CoffeeNode, LessNode, MergeNode, UrlNode, SplitExtNode,
                     WriteNode, ConcatNode, FilterNode, MapNode, XargsNode,
                     ChangeListenerNode, CacheNode)
-from .env import Environment, DebugEnvironment, watch_graph
+from .env import Environment, watch_graph
 from .exceptions import ValidationError, StopProcessing
 
 

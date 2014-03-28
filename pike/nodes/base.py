@@ -86,6 +86,9 @@ class FxnArgs(object):
             If the args cannot be passed to the node.
 
         """
+        if '*' in self.kwargs:
+            # We cannot effectively inspect '*' edges
+            return
         argspec = inspect.getargspec(node.process)
         args = argspec.args[1:]
         positional = len(args) - len(argspec.defaults or [])
@@ -135,6 +138,19 @@ class Edge(object):
         self.n2 = n2
         self.output_name = output_name
         self.input_name = input_name
+
+    def remove(self):
+        """ Remove this edge from the nodes it connects. """
+        try:
+            if self.n1 is not None:
+                self.n1.eout.remove(self)
+        except ValueError:
+            pass
+        try:
+            if self.n2 is not None:
+                self.n2.ein.remove(self)
+        except ValueError:
+            pass
 
     def validate(self):
         """
@@ -339,13 +355,29 @@ class Node(object):
             used for the node that comes after this one.
 
         """
-        for edge in self.eout[:]:
-            self.eout.remove(edge)
-            iname = input_name or edge.input_name
-            self.connect(node, edge.output_name, iname)
-            edge.n2.ein.remove(edge)
-            oname = output_name or edge.output_name
-            node.connect(edge.n2, oname, edge.input_name)
+        multi_edge = (len(self.eout) > 1 or
+                      '*' in [e.output_name for e in self.eout])
+        if multi_edge and \
+                (output_name is not None or input_name is not None):
+            raise ValueError("%s has more than one output edge. You cannot "
+                             "specify an input_name or output_name" % self)
+
+        if multi_edge:
+            for edge in self.eout[:]:
+                self.eout.remove(edge)
+                self.connect(node, edge.output_name, edge.input_name)
+                edge.n2.ein.remove(edge)
+                node.connect(edge.n2, edge.output_name, edge.input_name)
+        else:
+            if len(self.eout) == 1:
+                edge = self.eout[0]
+                self.eout.remove(edge)
+                edge.n2.ein.remove(edge)
+            else:
+                edge = Edge(n2=NoopNode())
+
+            self.connect(node, edge.output_name, input_name)
+            node.connect(edge.n2, output_name or 'default', edge.input_name)
 
     def __repr__(self):
         return 'Node(%s)' % self.name
