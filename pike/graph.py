@@ -320,7 +320,6 @@ class Graph(object):
             return NotImplemented
         link = LinkNode(self)
         edge = Edge(n1=link, output_name=output_name)
-        link.eout.append(edge)
         return edge
 
     def __rmul__(self, input_name):
