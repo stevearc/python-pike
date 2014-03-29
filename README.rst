@@ -9,3 +9,17 @@ Pike
 .. _coverage: https://coveralls.io/r/stevearc/pike?branch=master
 
 An asset pipeline and Make tool.
+
+Getting Started
+===============
+TODO
+
+TODO
+====
+* Parallelize jobs
+* Command to clean deleted assets
+* Watching can use mtime instead of md5
+* Maybe get rid of FileDataFile?
+* Check if pyramid url routing resolves relative links for us
+* Django support
+* Flask support

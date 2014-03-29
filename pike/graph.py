@@ -1,14 +1,23 @@
 """ Core classes for the graph architecture. """
+import os
+
 import copy
 import logging
 import six
+import subprocess
 import threading
 
 from .exceptions import ValidationError
 from .nodes import NoopNode, run_node, LinkNode, Edge, SourceNode
+from .util import tempd
 
 
 LOG = logging.getLogger(__name__)
+
+VIEW_COMMANDS = {
+    'png': ['open', 'eog', 'gthumb'],
+    'pdf': ['open', 'evince'],
+}
 
 
 def init_topo_sort(nodes):
@@ -344,3 +353,66 @@ class Graph(object):
         return LinkNode(self).__or__(other)
 
     __ior__ = __or__
+
+    def dot(self, indent=''):
+        """
+        Create dot syntax to represent this graph
+
+        Parameters
+        ----------
+        indent : str, optional
+            Spaces to prefix the graph with. If more that 0, this will be
+            written out as a cluster.
+
+        """
+        name = self.name.replace(' ', '_')
+        lines = []
+        if indent:
+            lines.append(indent + 'subgraph cluster_%s {' % name)
+            lines.append('  label = "%s";' % self.name)
+        else:
+            lines.append(indent + 'digraph %s {' % name)
+        for node in self.nodes:
+            lines.append(node.dot(indent + '  '))
+        lines.append('}')
+        return ('\n%s' % indent).join(lines)
+
+    def show(self, viewer=None, format='png'):
+        """
+        Compile and view a graphviz image of the graph.
+
+        Parameters
+        ----------
+        viewer : str, optional
+            The command to use to view the compiled file. By default many
+            programs will be attempted until one succeeds.
+        format : str, optional
+            The graphviz format to compile into (the -T argument). Default
+            'png'.
+
+        """
+        if viewer is None:
+            if format not in VIEW_COMMANDS:
+                raise ValueError("Unsupported output format '%s'" % format)
+            progs = VIEW_COMMANDS[format]
+        else:
+            progs = [viewer]
+        with tempd() as tmp:
+            def run(cmd):
+                """ Convenience method for calling subprocess """
+                try:
+                    return subprocess.call(cmd, cwd=tmp)
+                except os.error:
+                    return 1
+
+            with open(os.path.join(tmp, 'graph.dot'), 'w') as ofile:
+                ofile.write(self.dot())
+            code = run(['dot', '-Tpng', '-o', 'graph.png', 'graph.dot'])
+            if code != 0:
+                raise RuntimeError("Dot command failed! Is graphviz "
+                                   "installed?")
+            for cmd in progs:
+                code = run([cmd, 'graph.png'])
+                if code == 0:
+                    return
+            raise RuntimeError("Could not find program to open graph.png")

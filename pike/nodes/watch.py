@@ -35,8 +35,19 @@ class FingerprintNode(Node):
 
 class ChangeListenerNode(Node):
 
-    """ TODO: listen on all inputs """
+    """
+    Filter source files and detect changes.
 
+    It has two outputs, the default and 'all'. The default output contains only
+    the changed files. The 'all' edge will contain all files from the source.
+
+    Parameters
+    ----------
+    stop : bool, optional
+        If True, stop processing the graph if no changes are detected at this
+        node (default True)
+
+    """
     name = 'change_listener'
     outputs = ('default', 'all')
 
@@ -102,7 +113,18 @@ class ChangeEnforcerNode(Node):
 
 class CacheNode(Node):
 
-    """ TODO: support durable storage """
+    """
+    Cache the values that pass through this node.
+
+    This is useful if you have a :class:`~.ChangeListenerNode` and only wish to
+    process the updated files. You can put a CacheNode after the processing,
+    and all of the results will be passed on.
+
+    ..note::
+        The CacheNode handles new and changed files, but if you remove a file
+        it will still appear in the output of the CacheNode.
+
+    """
 
     name = 'cache'
     outputs = ('*')

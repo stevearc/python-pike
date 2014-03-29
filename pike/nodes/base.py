@@ -421,6 +421,34 @@ class Node(object):
         Node.__init__(clone)
         return clone
 
+    def _edge_dot(self, source, indent):
+        """ Create dot file syntax for outbound edges """
+        lines = []
+        for edge in self.eout:
+            if isinstance(edge.n2, LinkNode):
+                n2 = edge.n2.subgraph.source
+            else:
+                n2 = edge.n2
+            label = ''
+            if edge.output_name != 'default':
+                label += edge.output_name
+            label += ':'
+            if edge.input_name is not None:
+                label += edge.input_name
+            dot_edge = indent + '%s -> %d' % (id(source), id(n2))
+            if label != ':':
+                dot_edge += ' [label="%s"]' % label
+            lines.append(dot_edge + ';')
+        return '\n'.join(lines)
+
+    def dot(self, indent=''):
+        """ Create dot file syntax for node and outbound edges """
+        lines = [
+            indent + '%d [label="%s"];' % (id(self), self.name),
+            self._edge_dot(self, indent),
+        ]
+        return '\n'.join(lines)
+
 
 class LinkNode(Node):
 
@@ -436,6 +464,12 @@ class LinkNode(Node):
 
     def process(self, *args, **kwargs):
         return self.subgraph.run(*args, **kwargs)
+
+    def dot(self, indent=''):
+        return '\n'.join([
+            self.subgraph.dot(indent),
+            self._edge_dot(self.subgraph.sink, indent),
+        ])
 
 
 class AliasNode(Node):
