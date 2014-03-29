@@ -122,3 +122,34 @@ class TestEnvironment(BaseFileTest):
         env.add(graph)
         env.run_all()
         output.run.assert_called_with([])
+
+    def test_clean(self):
+        """ Cleaning directory should delete unknown files """
+        self._make_files('foo.py', 'bar.js')
+        env = pike.Environment()
+        with pike.Graph('g') as graph:
+            pike.glob('.', '*.py')
+        env.add(graph)
+        env.run_all()
+        env.clean('.')
+        self.assertTrue(os.path.exists('foo.py'))
+        self.assertFalse(os.path.exists('bar.js'))
+
+    def test_clean_before_run(self):
+        """ Attempting to clean a directory before running raises error """
+        env = pike.Environment()
+        with self.assertRaises(ValueError):
+            env.clean('.')
+
+    def test_clean_dry_run(self):
+        """ A dry run will mark files for deletion but leave them on disk """
+        self._make_files('foo.py', 'bar.js')
+        env = pike.Environment()
+        with pike.Graph('g') as graph:
+            pike.glob('.', '*.py')
+        env.add(graph)
+        env.run_all()
+        removed = env.clean('.', dry_run=True)
+        self.assertEqual(removed, [os.path.abspath('bar.js')])
+        self.assertTrue(os.path.exists('foo.py'))
+        self.assertTrue(os.path.exists('bar.js'))
