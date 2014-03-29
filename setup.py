@@ -25,7 +25,6 @@ REQUIREMENTS = [
 TEST_REQUIREMENTS = read('requirements_test.txt').split('\n')
 
 if sys.version_info[:2] < (2, 7):
-    REQUIREMENTS.extend(['ordereddict'])
     TEST_REQUIREMENTS.extend(['unittest2'])
 
 if __name__ == "__main__":

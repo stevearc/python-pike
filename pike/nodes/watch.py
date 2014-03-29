@@ -1,17 +1,12 @@
 """ Nodes for watching files for changes. """
-import six
 import copy
-from pike.exceptions import StopProcessing
-from collections import defaultdict
-try:
-    from collections import OrderedDict
-except ImportError:  # pragma: no cover
-    # Python 2.6
-    from ordereddict import OrderedDict  # pylint: disable=F0401
+import six
 from hashlib import md5  # pylint: disable=E0611
 
 from .base import Node
+from pike.exceptions import StopProcessing
 from pike.items import FileDataBlob
+from pike.sqlitedict import SqliteDict
 from pike.util import md5stream
 
 
@@ -51,10 +46,16 @@ class ChangeListenerNode(Node):
     name = 'change_listener'
     outputs = ('default', 'all')
 
-    def __init__(self, stop=True):
+    def __init__(self, stop=True, cache=None, key=None):
         super(ChangeListenerNode, self).__init__()
-        self.checksums = {}
         self.stop = stop
+        if cache is None:
+            self.checksums = {}
+        elif key is None:
+            raise ValueError("If cache is provided, must provide a key")
+        else:
+            self.checksums = SqliteDict(cache, key, autocommit=False,
+                                        synchronous=0)
 
     def process(self, stream):
         changed = []
@@ -68,15 +69,12 @@ class ChangeListenerNode(Node):
             all_items.append(item)
         if not changed and self.stop:
             raise StopProcessing
+        if isinstance(self.checksums, SqliteDict):
+            self.checksums.commit()
         return {
             'default': changed,
             'all': all_items,
         }
-
-    def __copy__(self):
-        clone = super(ChangeListenerNode, self).__copy__()
-        clone.checksums = {}
-        return clone
 
 
 class ChangeEnforcerNode(Node):
@@ -129,9 +127,15 @@ class CacheNode(Node):
     name = 'cache'
     outputs = ('*')
 
-    def __init__(self):
+    def __init__(self, cache=None, key=None):
         super(CacheNode, self).__init__()
-        self.cache = defaultdict(OrderedDict)
+        if cache is None:
+            self.cache = {}
+        elif key is None:
+            raise ValueError("If cache is provided, must provide a key")
+        else:
+            self.cache = SqliteDict(cache, key, autocommit=False,
+                                    synchronous=0)
 
     def process(self, default=None, **kwargs):
         if default is not None:
@@ -139,15 +143,17 @@ class CacheNode(Node):
         ret = {}
         for stream, items in six.iteritems(kwargs):
             for item in items:
-                self.cache[stream][item.fullpath] = item
+                try:
+                    self.cache[stream][item.fullpath] = item
+                except KeyError:
+                    self.cache[stream] = {item.fullpath: item}
             ret[stream] = []
-            for item in six.itervalues(self.cache[stream]):
+            for item in six.itervalues(self.cache.get(stream, {})):
                 clone = copy.copy(item)
                 clone.data = FileDataBlob(clone.data.read())
                 ret[stream].append(clone)
+            if isinstance(self.cache, SqliteDict):
+                self.cache[stream] = self.cache[stream]
+        if isinstance(self.cache, SqliteDict):
+            self.cache.commit()
         return ret
-
-    def __copy__(self):
-        clone = super(CacheNode, self).__copy__()
-        clone.cache = defaultdict(OrderedDict)
-        return clone

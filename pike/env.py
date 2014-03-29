@@ -7,13 +7,12 @@ import logging
 import six
 import threading
 
-from .dbdict import PersistentDict
 from .exceptions import StopProcessing
 from .graph import Graph
 from .items import FileMeta
-from .nodes import (FingerprintNode, ChangeListenerNode, ChangeEnforcerNode,
-                    CacheNode, Edge, NoopNode)
-from .util import resource_spec, memoize
+from .nodes import (ChangeListenerNode, ChangeEnforcerNode, CacheNode, Edge,
+                    NoopNode)
+from .sqlitedict import SqliteDict
 
 
 LOG = logging.getLogger(__name__)
@@ -37,15 +36,9 @@ def watch_graph(graph, partial=False, cache=None):
         # If we only pass through the changed files, we'll need a CacheNode at
         # the end
         if partial:
-            sink = CacheNode()
+            sink = CacheNode(cache, new_graph.name + '_cache')
             new_graph.sink.connect(sink)
             new_graph.sink = sink
-            if cache is not None:
-                key = new_graph.name + '_cache'
-                if key in cache:
-                    sink.cache = cache[key]
-                else:
-                    cache[key] = sink.cache
         enforcer = ChangeEnforcerNode()
         for i, node in enumerate(new_graph.source_nodes()):
             # Find the outbound edge of the source
@@ -56,13 +49,8 @@ def watch_graph(graph, partial=False, cache=None):
                 # If source has no outbound edge, make one.
                 edge = Edge(n2=NoopNode())
             # Funnel files through a change listener
-            listener = ChangeListenerNode(stop=False)
-            if cache is not None:
-                key = new_graph.name + '_listen_' + str(i)
-                if key in cache:
-                    listener.checksums = cache[key]
-                else:
-                    cache[key] = listener.checksums
+            key = new_graph.name + '_listen_' + str(i)
+            listener = ChangeListenerNode(stop=False, cache=cache, key=key)
             node.connect(listener)
             # Create a fan-in, fan-out with the changed files that goes through
             # a ChangeEnforcer. That way processing will continue even if only
@@ -84,14 +72,13 @@ class Environment(object):
     """
 
     def __init__(self, watch=False, cache=None):
-        self._disk_cache = None
         self._cache = {}
         self._graphs = {}
         self._gen_files = {}
+        self._cache_file = cache
         if cache is not None:
-            self._disk_cache = PersistentDict(cache)
-            self._cache = self._disk_cache.setdefault('cache', {})
-            self._gen_files = self._disk_cache.setdefault('gen_files', {})
+            self._cache = SqliteDict(cache, 'processed', autocommit=False, synchronous=0)
+            self._gen_files = SqliteDict(cache, 'file_paths', autocommit=False, synchronous=0)
         self.default_output = None
         self.watch = watch
 
@@ -118,7 +105,7 @@ class Environment(object):
                 graph.connect(self.default_output, '*', '*')
             graph = wrapper
         if self.watch:
-            graph = watch_graph(graph, partial, self._disk_cache)
+            graph = watch_graph(graph, partial, self._cache_file)
 
         self._graphs[graph.name] = graph
 
@@ -172,8 +159,9 @@ class Environment(object):
                             self._gen_files[item.filename] = \
                                 (name, item.fullpath)
                 self._cache[name] = results
-                if self._disk_cache is not None:
-                    self._disk_cache.sync()
+                if self._cache_file is not None:
+                    self._cache.commit()
+                    self._gen_files.commit()
             except StopProcessing:
                 LOG.debug("No changes for %s", name)
         return self._cache[name]
