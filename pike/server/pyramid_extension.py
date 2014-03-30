@@ -4,10 +4,12 @@ Pike extension for Pyramid.
 """
 import os
 
+from pike.util import resource_spec
 from pyramid.httpexceptions import HTTPNotFound
 from pyramid.response import FileResponse
 from pyramid.settings import asbool
 
+from . import get_environment
 from pike import Environment, Graph, WriteNode, UrlNode, XargsNode
 
 
@@ -29,20 +31,19 @@ def includeme(config):
     watch = asbool(settings.get('pike.watch', True))
     path = settings.get('pike.url_prefix', 'gen').strip('/')
     serve_files = asbool(settings.get('pike.serve_files', True))
+    static_view = asbool(settings.get('pike.static_view', False))
+    cache_file = settings.get('pike.cache_file', '.pike-cache')
 
     if serve_files:
-        config.add_route('pike_assets', '/%s/*path' % path)
-        config.add_view(serve_asset, route_name='pike_assets')
+        if static_view:
+            abspath = os.path.abspath(resource_spec(output_dir))
+            config.add_static_view(name=path, path=abspath,
+                                   cache_max_age=31556926)
+        else:
+            config.add_route('pike_assets', '/%s/*path' % path)
+            config.add_view(serve_asset, route_name='pike_assets')
 
-    with Graph('write-and-gen-url') as write_and_url:
-        WriteNode(output_dir).connect(UrlNode(path))
-
-    with Graph('gen-file-and-url') as default_output:
-        XargsNode(write_and_url)
-
-    cache_file = settings.get('pike.cache_file', '.pike-cache')
-    env = Environment(watch=watch, cache=cache_file)
-    env.set_default_output(default_output)
+    env = get_environment(watch, cache_file, path, output_dir)
     config.registry.pike_env = env
     config.add_directive('get_pike_env', lambda c: c.registry.pike_env)
 

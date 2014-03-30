@@ -10,8 +10,14 @@ from .exceptions import ValidationError, StopProcessing
 
 def includeme(config):
     """ Redirect to the pyramid extension's includeme """
-    from .server import pyramid_extension as extension
-    extension.includeme(config)
+    from .server import pyramid_extension
+    pyramid_extension.includeme(config)
+
+
+def flaskme(app):
+    """ Redirect to the flask extension's configure """
+    from .server import flask_extension
+    flask_extension.configure(app)
 
 
 def _make_change_listener():

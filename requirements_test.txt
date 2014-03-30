@@ -1,5 +1,6 @@
 pyramid
 webtest
 pyramid_jinja2
+flask
 nose
 mock

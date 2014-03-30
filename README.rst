@@ -17,6 +17,5 @@ TODO
 TODO
 ====
 * Django support
-* Flask support
 * Test coverage
 * More node types
