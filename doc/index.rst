@@ -17,6 +17,7 @@ User Guide
     topics/graph
     topics/environment
     topics/servers
+    topics/templates
     topics/nodes
     topics/developing
 
@@ -39,8 +40,8 @@ Indices and tables
 
 TODO
 ====
-* Django support
+.. todolist::
+
+* Readme documentation
 * Test coverage
 * More node types
-* Dot styling
-* Documentation

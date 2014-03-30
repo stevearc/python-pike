@@ -17,7 +17,9 @@ for path in addtl_paths:
     sys.path.insert(0, os.path.abspath(os.path.join(docs_basepath, path)))
 
 extensions = ['sphinx.ext.autodoc', 'numpydoc', 'sphinx.ext.intersphinx',
-              'sphinx.ext.linkcode', 'sphinx.ext.autosummary', 'github']
+              'sphinx.ext.linkcode', 'sphinx.ext.autosummary', 'github',
+              'sphinx.ext.todo']
+todo_include_todos = True
 
 master_doc = 'index'
 project = u'pike'

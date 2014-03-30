@@ -32,7 +32,11 @@ def includeme(config):
     path = settings.get('pike.url_prefix', 'gen').strip('/')
     serve_files = asbool(settings.get('pike.serve_files', True))
     static_view = asbool(settings.get('pike.static_view', False))
-    cache_file = settings.get('pike.cache_file', '.pike-cache')
+    cache_file = settings.get('pike.cache_file')
+    if cache_file is None:
+        cache_file = os.path.join(resource_spec(output_dir), '.pike-cache')
+    else:
+        cache_file = resource_spec(cache_file)
 
     if serve_files:
         if static_view:

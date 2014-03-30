@@ -11,6 +11,7 @@
 """ A lightweight wrapper around sqlite3, with a dict-like interface """
 # pylint: disable=F0401,E0611,C0103,C0111
 import os
+import re
 
 import logging
 import six
@@ -97,12 +98,20 @@ class SqliteDict(MutableMapping):
         if flag == 'n':
             if os.path.exists(filename):
                 os.remove(filename)
-        tablename = tablename.replace('-', '_').replace(' ', '_')
+        tablename = re.sub(r'[^A-Za-z0-9]', '_', tablename)
         self.filename = filename
         self.tablename = tablename
         self.autocommit = autocommit
         self.q = Namespace(dict(((k, v % tablename) for k, v in
                                  six.iteritems(__queries__))))
+
+        # If containing directory doesn't exist, make it
+        dirname = os.path.dirname(filename)
+        if not os.path.exists(dirname):
+            try:
+                os.makedirs(dirname)
+            except os.error:
+                pass
 
         LOG.info("opening Sqlite table %r in %s", tablename, filename)
         if autocommit:

@@ -29,6 +29,12 @@ def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
         If True, the :class:`~pike.ChangeListenerNode` will only propagate
         changed files and the graph will rely on a :class:`~pike.CacheNode` to
         produce the total output.
+    cache : str, optional
+        If present, cache the file fingerprints and other data in this file.
+    fingerprint : str or callable, optional
+        The method to use for fingerprinting files when ``watch=True``. See
+        :class:`~pike.nodes.watch.ChangeListenerNode` for details. (default
+        'md5')
 
     """
     new_graph = copy.deepcopy(graph)
@@ -72,6 +78,18 @@ class Environment(object):
 
     """
     Environment for running multiple Graphs and caching the results.
+
+    Parameters
+    ----------
+    watch : bool, optional
+        If True, watch all graphs for changes in the source files and rerun
+        them if changes are detected (default False)
+    cache : str, optional
+        The sqlite file to use as a persistent cache (default ':memory:')
+    fingerprint : str or callable, optional
+        The method to use for fingerprinting files when ``watch=True``. See
+        :class:`~pike.nodes.watch.ChangeListenerNode` for details. (default
+        'md5')
 
     """
 
@@ -264,6 +282,11 @@ class Environment(object):
         path : str or None
             Absolute path of the generated asset (if it exists). If the path is
             known to be invalid, this value will be None.
+
+        Notes
+        -----
+        .. todo::
+            Requesting an existing file doesn't rebuild changes
 
         """
         if path not in self._gen_files:

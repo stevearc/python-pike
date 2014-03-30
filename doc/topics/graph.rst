@@ -193,9 +193,9 @@ or insert other components. For that, we have :class:`~pike.graph.Macro`'s.
 
 .. image:: macro.png 
 
-You can put any number of :class:`~pike.nodes.base.PlaceholderNode`s inside of
+You can put any number of :class:`~pike.nodes.base.PlaceholderNode`'s inside of
 a graph. Then you can create a macro by calling
-:class:`~pike.graph.Graph.macro` with the positional and keyword arguments that
+:meth:`~pike.graph.Graph.macro` with the positional and keyword arguments that
 will become the function signature of the macro.
 
 Visualization
@@ -207,3 +207,6 @@ methods to know about:
 * :meth:`~pike.graph.Graph.dot` - Returns the dot syntax for drawing this graph
 * :meth:`~pike.graph.Graph.render` - Shells out to ``dot`` to render an image
 * :meth:`~pike.graph.Graph.show` - Attempts to auto-create and auto-open the image for you
+
+All graphs in this documentation were generated with
+:meth:`~pike.graph.Graph.render`.

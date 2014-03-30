@@ -1,6 +1,8 @@
 Pike
 ====
 :Master Build: |build|_ |coverage|_
+:Documentation: http://pike.readthedocs.org/
+:Downloads: http://pypi.python.org/pypi/pike
 :Source: https://github.com/stevearc/pike
 
 .. |build| image:: https://travis-ci.org/stevearc/pike.png?branch=master

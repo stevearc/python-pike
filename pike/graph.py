@@ -1,5 +1,6 @@
 """ Core classes for the graph architecture. """
 import os
+import re
 
 import copy
 import logging
@@ -372,8 +373,13 @@ class Graph(object):
             Spaces to prefix the graph with. If more that 0, this will be
             written out as a cluster.
 
+        Notes
+        -----
+        .. todo::
+            Style parameters for dot
+
         """
-        name = self.name.replace(' ', '_').replace('.', '_')
+        name = re.sub(r'[^A-Za-z0-9]', '_', self.name)
         lines = []
         if indent:
             lines.append(indent + 'subgraph cluster_%s {' % name)
