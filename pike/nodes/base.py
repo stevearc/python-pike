@@ -4,6 +4,14 @@ from pike.exceptions import ValidationError
 import six
 
 
+def asnode(node):
+    """ Convert non-node objects into a Node """
+    wrapper = getattr(node, '__wrapper_node__', None)
+    if wrapper is None:
+        return node
+    return wrapper(node)
+
+
 def run_node(node, args, kwargs):
     """
     Run a node with some inputs.
@@ -166,8 +174,8 @@ class Edge(object):
             raise ValidationError("Edge is incomplete: %s" % self)
 
     def __or__(self, other):
-        from pike import Graph
-        if isinstance(other, (Node, Graph)):
+        other = asnode(other)
+        if isinstance(other, Node):
             e = self.n1.connect(other, self.output_name, self.input_name)
             return e.n2
         elif isinstance(other, Edge):
@@ -317,9 +325,7 @@ class Node(object):
             Same as on :class:`~.Edge`
 
         """
-        from pike import Graph
-        if isinstance(other, Graph):
-            other = LinkNode(other)
+        other = asnode(other)
         if output_name == '*' and input_name != '*':
             # n1.connect(n2, '*') is the same as putting n2 inside of an
             # XargsNode
@@ -402,8 +408,8 @@ class Node(object):
         return edge
 
     def __or__(self, other):
-        from pike import Graph
-        if isinstance(other, (Node, Graph)):
+        other = asnode(other)
+        if isinstance(other, Node):
             e = self.connect(other)
             return e.n2
         elif isinstance(other, Edge):
@@ -484,7 +490,7 @@ class LinkNode(Node):
         ])
 
 
-class AliasNode(Node):
+class PlaceholderNode(Node):
 
     """
     Placeholder node that can be replaced by other nodes at a later time.
@@ -492,25 +498,25 @@ class AliasNode(Node):
     This is used in the creation of :class:`~pike.graph.Macro`s.
 
     """
-    name = 'alias'
+    name = 'placeholder'
     outputs = ('*')
 
-    def __init__(self):
-        super(AliasNode, self).__init__()
-        self.node = None
-
-    def set_node(self, node):
+    def replace(self, node):
         """ Set the aliased node. """
+        node = asnode(node)
         from pike import Graph
-        if isinstance(node, Graph):
-            node = LinkNode(node)
-        self.node = node
-        self.name = 'alias(%s)' % node.name
-        # The node should not have any connection in the graph
-        Graph.deregister_node(node)
+        Graph.deregister_node(self)
+        Graph.register_node(node)
+        node.ein = self.ein
+        for edge in self.ein:
+            edge.n2 = node
+        node.eout = self.eout
+        for edge in self.eout:
+            edge.n1 = node
 
     def process(self, *args, **kwargs):
-        return run_node(self.node, args, kwargs)
+        raise RuntimeError("Placeholder nodes should not be called directly! "
+                           "Look for information on Macros.")
 
 
 class NoopNode(Node):
@@ -546,9 +552,7 @@ class XargsNode(Node):
     def __init__(self, node):
         super(XargsNode, self).__init__()
         from pike import Graph
-        if isinstance(node, Graph):
-            node = LinkNode(node)
-        self.node = node
+        self.node = asnode(node)
         # This node isn't actually in the graph
         Graph.deregister_node(self.node)
 

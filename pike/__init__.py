@@ -1,9 +1,9 @@
 """ Pike """
 from .graph import Graph
-from .nodes import (Node, Edge, AliasNode, NoopNode, SourceNode, GlobNode,
-                    CoffeeNode, LessNode, MergeNode, UrlNode, SplitExtNode,
-                    WriteNode, ConcatNode, FilterNode, MapNode, XargsNode,
-                    ChangeListenerNode, CacheNode)
+from .nodes import (Node, Edge, PlaceholderNode, NoopNode, SourceNode,
+                    GlobNode, CoffeeNode, LessNode, MergeNode, UrlNode,
+                    SplitExtNode, WriteNode, ConcatNode, FilterNode, MapNode,
+                    XargsNode, ChangeListenerNode, CacheNode)
 from .env import Environment, watch_graph
 from .exceptions import ValidationError, StopProcessing
 
@@ -20,14 +20,6 @@ def flaskme(app):
     flask_extension.configure(app)
 
 
-def _make_change_listener():
-    """ Create a macro that will watch a node for changes """
-    with Graph('change_listener') as graph:
-        wrapped = AliasNode()
-        ChangeListenerNode() | wrapped * '*' | '*' * CacheNode()
-    return graph.macro(pipe=wrapped)
-
-
 # pylint: disable=C0103
 glob = GlobNode
 noop = NoopNode
@@ -40,6 +32,5 @@ write = WriteNode
 concat = ConcatNode
 filter = FilterNode
 map = MapNode
-alias = AliasNode
+placeholder = PlaceholderNode
 xargs = XargsNode
-watch = _make_change_listener()

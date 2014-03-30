@@ -8,7 +8,7 @@ import subprocess
 import threading
 
 from .exceptions import ValidationError
-from .nodes import NoopNode, run_node, LinkNode, Edge, SourceNode
+from .nodes import NoopNode, run_node, LinkNode, asnode, Edge, SourceNode
 from .util import tempd
 
 
@@ -115,8 +115,9 @@ class Macro(object):
         if set(self.kwargs) != set(kwargs):
             raise TypeError("%s must be called with these arguments: %s" %
                             (self, ', '.join(self.kwargs)))
-        for name, index in six.iteritems(self.kwargs):
-            clone[index].set_node(kwargs[name])
+        with clone:
+            for name, index in six.iteritems(self.kwargs):
+                clone[index].replace(kwargs[name])
         return clone
 
     def __repr__(self):
@@ -139,6 +140,7 @@ class Graph(object):
 
     """
     graph_context = threading.local()
+    __wrapper_node__ = LinkNode
 
     def __init__(self, name):
         self.name = name
@@ -231,7 +233,8 @@ class Graph(object):
         """
         if self._finalized:
             raise ValueError("Cannot add nodes after Graph has been finalized")
-        self.nodes.append(node)
+        if node not in self.nodes:
+            self.nodes.append(node)
 
     def remove(self, node):
         """
@@ -334,25 +337,25 @@ class Graph(object):
 
     def connect(self, *args, **kwargs):
         """ Same operation as :meth:`~pike.Node.connect` """
-        link = LinkNode(self)
+        link = asnode(self)
         return link.connect(*args, **kwargs)
 
     def __mul__(self, output_name):
         if not isinstance(output_name, six.string_types):
             return NotImplemented
-        link = LinkNode(self)
+        link = asnode(self)
         edge = Edge(n1=link, output_name=output_name)
         return edge
 
     def __rmul__(self, input_name):
         if not isinstance(input_name, six.string_types):
             return NotImplemented
-        link = LinkNode(self)
+        link = asnode(self)
         edge = Edge(n2=link, input_name=input_name)
         return edge
 
     def __or__(self, other):
-        return LinkNode(self).__or__(other)
+        return asnode(self).__or__(other)
 
     __ior__ = __or__
 

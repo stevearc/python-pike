@@ -1,7 +1,7 @@
 """ Tests for graph constructs """
 import pike
 from .test import ParrotNode
-from pike import Node, Edge, Graph, AliasNode
+from pike import Node, Edge, Graph
 from pike.graph import ValidationError, topo_sort
 
 
@@ -129,7 +129,7 @@ class TestGraph(unittest.TestCase):
     def test_macro(self):
         """ Create a macro that inserts custom nodes for alias nodes """
         with Graph('g') as graph:
-            a = AliasNode()
+            a = pike.placeholder()
         m = graph.macro(only=a)
         g1 = m(ParrotNode('foo'))
         g2 = m(only=ParrotNode('bar'))
