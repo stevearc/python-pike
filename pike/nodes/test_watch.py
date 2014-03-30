@@ -2,7 +2,7 @@
 import subprocess
 
 import pike
-from . import BaseFileTest
+from pike.test import BaseFileTest
 
 
 class TestChangeListener(BaseFileTest):

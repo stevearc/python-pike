@@ -2,7 +2,7 @@
 import six
 import os
 
-from . import BaseFileTest
+from .test import BaseFileTest
 from pike import util, sqlitedict
 
 

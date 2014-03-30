@@ -53,7 +53,7 @@ if __name__ == "__main__":
         keywords='asset assets pipe pipeline make build tool',
         platforms='any',
         include_package_data=True,
-        packages=find_packages(exclude=('tests',)),
+        packages=find_packages(exclude=('test*',)),
         install_requires=REQUIREMENTS,
         tests_require=REQUIREMENTS + TEST_REQUIREMENTS,
     )

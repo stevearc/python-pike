@@ -4,7 +4,7 @@ import os
 from mock import MagicMock
 
 import pike
-from . import ParrotNode, BaseFileTest
+from .test import ParrotNode, BaseFileTest
 
 
 class TestEnvironment(BaseFileTest):

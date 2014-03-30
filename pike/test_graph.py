@@ -1,6 +1,6 @@
 """ Tests for graph constructs """
 import pike
-from . import ParrotNode
+from .test import ParrotNode
 from pike import Node, Edge, Graph, AliasNode
 from pike.graph import ValidationError, topo_sort
 

@@ -52,7 +52,6 @@ def main():
     with pike.Graph('tests') as graph:
         runner = TestRunnerNode(args.coverage)
         pike.glob('pike', '*.py') | runner
-        pike.glob('tests', '*.py') | runner
     env.add(graph)
     env.run_forever(sleep=1)
 
