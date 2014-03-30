@@ -153,6 +153,7 @@ class WriteNode(Node):
     def __init__(self, base_dir=os.curdir, debug=False):
         super(WriteNode, self).__init__()
         self.base_dir = resource_spec(base_dir)
+        self.name = 'write(%r)' % self.base_dir
         self.debug = debug
 
     def process_one(self, item):

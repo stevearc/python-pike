@@ -34,3 +34,5 @@ filter = FilterNode
 map = MapNode
 placeholder = PlaceholderNode
 xargs = XargsNode
+listen = ChangeListenerNode
+cache = CacheNode

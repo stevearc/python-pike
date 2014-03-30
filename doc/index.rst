@@ -14,6 +14,11 @@ User Guide
     :glob:
 
     topics/getting_started
+    topics/graph
+    topics/environment
+    topics/servers
+    topics/nodes
+    topics/developing
 
     changes
 
@@ -31,3 +36,11 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+TODO
+====
+* Django support
+* Test coverage
+* More node types
+* Dot styling
+* Documentation

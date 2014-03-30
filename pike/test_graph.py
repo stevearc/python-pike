@@ -130,9 +130,9 @@ class TestGraph(unittest.TestCase):
         """ Create a macro that inserts custom nodes for alias nodes """
         with Graph('g') as graph:
             a = pike.placeholder()
-        m = graph.macro(only=a)
+        m = graph.macro(a)
         g1 = m(ParrotNode('foo'))
-        g2 = m(only=ParrotNode('bar'))
+        g2 = m(ParrotNode('bar'))
         self.assertEqual(g1.run(), {'default': 'foo'})
         self.assertEqual(g2.run(), {'default': 'bar'})
 

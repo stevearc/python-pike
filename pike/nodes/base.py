@@ -220,12 +220,15 @@ class Node(object):
     ----------
     name : str
         Used when pretty-printing and debugging
+    graph : :class:`~pike.graph.Graph`
+        The graph this node belongs to, if any
     outputs : tuple
         Names of all output edges that this node can return. This is used for
         Edge validation. If any output should be considered valid, use '*'.
 
     """
     name = None
+    graph = None
     outputs = ('default')
 
     def __init__(self, name='unknown'):
@@ -248,6 +251,11 @@ class Node(object):
         """ True if the Node accepts any args or kwargs """
         argspec = inspect.getargspec(self.process)
         return argspec.varargs or argspec.keywords or len(argspec.args) > 1
+
+    def deregister(self):
+        """ Deregister a node from its parent graph """
+        if self.graph is not None:
+            self.graph.remove(self)
 
     def validate(self, require_inputs=True):
         """
@@ -505,7 +513,8 @@ class PlaceholderNode(Node):
         """ Set the aliased node. """
         node = asnode(node)
         from pike import Graph
-        Graph.deregister_node(self)
+        self.deregister()
+        node.deregister()
         Graph.register_node(node)
         node.ein = self.ein
         for edge in self.ein:
@@ -551,10 +560,9 @@ class XargsNode(Node):
 
     def __init__(self, node):
         super(XargsNode, self).__init__()
-        from pike import Graph
         self.node = asnode(node)
         # This node isn't actually in the graph
-        Graph.deregister_node(self.node)
+        self.node.deregister()
 
     def process(self, default=None, **kwargs):
         ret = {}

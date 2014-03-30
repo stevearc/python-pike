@@ -166,7 +166,7 @@ class FileMeta(object):
         self.filename = os.path.splitext(self.filename)[0] + ext
 
     def __repr__(self):
-        return 'File(%s)' % self.filename
+        return 'File(%r)' % self.filename
 
     def __eq__(self, other):
         return (isinstance(other, FileMeta) and

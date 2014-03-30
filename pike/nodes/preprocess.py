@@ -22,11 +22,12 @@ class CoffeeNode(Node):
 
     """
     name = 'coffee'
-    outputs = ('default', 'map', 'coffee')
 
     def __init__(self, maps=True):
         super(CoffeeNode, self).__init__()
         self.maps = maps
+        if maps:
+            self.outputs = ('default', 'map', 'coffee')
 
     def process(self, stream):
         if self.maps:

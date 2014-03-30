@@ -13,10 +13,3 @@ An asset pipeline and Make tool.
 Getting Started
 ===============
 TODO
-
-TODO
-====
-* Django support
-* Test coverage
-* More node types
-* Documentation

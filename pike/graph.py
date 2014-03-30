@@ -8,7 +8,7 @@ import subprocess
 import threading
 
 from .exceptions import ValidationError
-from .nodes import NoopNode, run_node, LinkNode, asnode, Edge, SourceNode
+from .nodes import NoopNode, run_node, LinkNode, asnode, Edge
 from .util import tempd
 
 
@@ -98,24 +98,22 @@ class Macro(object):
 
     """
 
-    def __init__(self, graph, kwargs):
+    def __init__(self, graph, args, kwargs):
         self.graph = graph
+        self.args = args
         self.kwargs = kwargs
 
     def __call__(self, *args, **kwargs):
-        if len(args) > 0:
-            if len(kwargs) > 0 or len(self.kwargs) > 1:
-                raise TypeError("%s can only be called with positional "
-                                "arguments if it takes a single argument" %
-                                self)
-            else:
-                k = tuple(self.kwargs.keys())[0]
-                kwargs[k] = args[0]
-        clone = copy.deepcopy(self.graph)
+        if len(args) != len(self.args):
+            raise TypeError("%s requires %d positional arguments" %
+                            (self, len(self.args)))
         if set(self.kwargs) != set(kwargs):
             raise TypeError("%s must be called with these arguments: %s" %
                             (self, ', '.join(self.kwargs)))
+        clone = copy.deepcopy(self.graph)
         with clone:
+            for node, index in zip(args, self.args):
+                clone[index].replace(node)
             for name, index in six.iteritems(self.kwargs):
                 clone[index].replace(kwargs[name])
         return clone
@@ -126,6 +124,14 @@ class Macro(object):
 BAD_EDGE = ValidationError(
     "Bad graph edge! This can only happen if there is a bug in the "
     "Node.connect() call. Please file a bug. sorry, bro :(")
+
+
+def call(cmd, **kwargs):
+    """ Convenience method for calling subprocess """
+    try:
+        return subprocess.call(cmd, **kwargs)
+    except os.error:
+        return 1
 
 
 class Graph(object):
@@ -148,14 +154,13 @@ class Graph(object):
         self._finalized = False
         self.source = None
         self.sink = None
+        self._old_instance = None
 
     def __repr__(self):
         return 'Graph(%s)' % self.name
 
     def __enter__(self):
-        if getattr(self.graph_context, 'instance', None) is not None:
-            raise RuntimeError(
-                "Cannot enter two graph contexts at the same time")
+        self._old_instance = getattr(self.graph_context, 'instance', None)
         self._finalized = False
         if self.source is None:
             self.source = NoopNode()
@@ -165,7 +170,7 @@ class Graph(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        Graph.graph_context.instance = None
+        Graph.graph_context.instance = self._old_instance
         if exc_type is None:
             self.finalize()
 
@@ -176,14 +181,7 @@ class Graph(object):
         if instance is not None:
             instance.add(node)
 
-    @classmethod
-    def deregister_node(cls, node):
-        """ If inside a Graph context, remove this node from the graph """
-        instance = getattr(cls.graph_context, 'instance', None)
-        if instance is not None:
-            instance.remove(node)
-
-    def macro(self, **kwargs):
+    def macro(self, *args, **kwargs):
         """
         Create a macro from this graph.
 
@@ -210,9 +208,10 @@ class Graph(object):
             source_node = mymacro(files=pike.glob('/tmp', '*'))
 
         """
+        macro_args = [self.nodes.index(v) for v in args]
         macro_kwargs = dict(((k, self.nodes.index(v)) for k, v in
                              six.iteritems(kwargs)))
-        return Macro(self, macro_kwargs)
+        return Macro(self, macro_args, macro_kwargs)
 
     def __getitem__(self, key):
         return self.nodes[key]
@@ -233,8 +232,11 @@ class Graph(object):
         """
         if self._finalized:
             raise ValueError("Cannot add nodes after Graph has been finalized")
+        if node.graph is not None:
+            raise ValueError("Node is already registered to %s!" % node.graph)
         if node not in self.nodes:
             self.nodes.append(node)
+        node.graph = self
 
     def remove(self, node):
         """
@@ -252,6 +254,7 @@ class Graph(object):
             self.nodes.remove(node)
         except ValueError:
             pass
+        node.graph = None
 
     def finalize(self):
         """ Mark the Graph as immutable and perform validation checks. """
@@ -370,7 +373,7 @@ class Graph(object):
             written out as a cluster.
 
         """
-        name = self.name.replace(' ', '_')
+        name = self.name.replace(' ', '_').replace('.', '_')
         lines = []
         if indent:
             lines.append(indent + 'subgraph cluster_%s {' % name)
@@ -381,6 +384,20 @@ class Graph(object):
             lines.append(node.dot(indent + '  '))
         lines.append('}')
         return ('\n%s' % indent).join(lines)
+
+    def render(self, outfile):
+        """ Render this graph to an image file using graphviz """
+        img_format = os.path.splitext(outfile)[1][1:]
+        try:
+            with open('graph.dot', 'w') as ofile:
+                ofile.write(self.dot())
+            code = call(['dot', '-T' + img_format, '-o', outfile, 'graph.dot'])
+            if code != 0:
+                raise RuntimeError("Dot command failed! Is graphviz "
+                                   "installed?")
+        finally:
+            if os.path.exists('graph.dot'):
+                os.remove('graph.dot')
 
     def show(self, viewer=None, format='png'):
         """
@@ -403,21 +420,10 @@ class Graph(object):
         else:
             progs = [viewer]
         with tempd() as tmp:
-            def run(cmd):
-                """ Convenience method for calling subprocess """
-                try:
-                    return subprocess.call(cmd, cwd=tmp)
-                except os.error:
-                    return 1
-
-            with open(os.path.join(tmp, 'graph.dot'), 'w') as ofile:
-                ofile.write(self.dot())
-            code = run(['dot', '-Tpng', '-o', 'graph.png', 'graph.dot'])
-            if code != 0:
-                raise RuntimeError("Dot command failed! Is graphviz "
-                                   "installed?")
+            outfile = os.path.join(tmp, 'graph.' + format)
+            self.render(outfile)
             for cmd in progs:
-                code = run([cmd, 'graph.png'])
+                code = call([cmd, outfile])
                 if code == 0:
                     return
             raise RuntimeError("Could not find program to open graph.png")
