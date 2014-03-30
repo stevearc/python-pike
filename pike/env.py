@@ -169,6 +169,11 @@ class Environment(object):
                 self._cache.commit()
             except StopProcessing:
                 LOG.debug("No changes for %s", name)
+            except Exception as e:
+                if hasattr(e, 'path'):
+                    LOG.error("Exception along path %s",
+                              ' -> '.join([str(node) for node in e.path]))
+                raise
         return self._cache[name]
 
     def run_all(self, bust=False):

@@ -25,9 +25,9 @@ def run_node(node, args, kwargs):
     try:
         ret = node.process(*args, **kwargs)
     except Exception as e:
-        if not hasattr(e, 'pipeline'):
-            e.pipeline = []
-        e.pipeline.append(node)
+        if not hasattr(e, 'path'):
+            e.path = []
+        e.path.append(node)
         raise
     if not isinstance(ret, dict):
         ret = {'default': ret}

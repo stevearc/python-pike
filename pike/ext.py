@@ -14,7 +14,7 @@ class JinjaExtension(Extension):
     --------
     ::
 
-        {% pike 'pipe.coffee' %}
+        {% pike 'app.coffee' %}
             <link rel="stylesheet" type="text/css" href="{{ ASSET.url }}">
         {% endpike %}
 
@@ -35,7 +35,7 @@ class JinjaExtension(Extension):
         # that line number to the nodes we create by hand.
         lineno = parser.stream.next().lineno
 
-        # now we parse a single expression that is used as the pipe identifier
+        # now we parse a single expression that is used as the pike identifier
         args = [parser.parse_expression()]
 
         # now we parse the body of the cache block up to `endpike` and
@@ -44,11 +44,11 @@ class JinjaExtension(Extension):
 
         call_args = [nodes.Name('ASSET', 'store')]
 
-        return nodes.CallBlock(self.call_method('_run_pipe', args), call_args,
+        return nodes.CallBlock(self.call_method('_run_graph', args), call_args,
                                [], body).set_lineno(lineno)
 
-    def _run_pipe(self, name, caller=None):
-        """ Run a pipeline and render the tag contents for each output """
+    def _run_graph(self, name, caller=None):
+        """ Run a graph and render the tag contents for each output """
         if ':' in name:
             name, key = name.split(':', 1)
         else:
