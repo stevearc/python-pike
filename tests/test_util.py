@@ -12,7 +12,7 @@ class TestFileMatch(BaseFileTest):
 
     def setUp(self):
         super(TestFileMatch, self).setUp()
-        self._make_files(
+        self.make_files(
             'app.js',
             'widget.js',
             'common/util.js',

@@ -31,7 +31,7 @@ class TestEnvironment(BaseFileTest):
 
     def test_watch_graph_caches(self):
         """ Watching a graph will raise StopProcessing if no file changes """
-        self._make_files(foo='foo', bar='bar')
+        self.make_files(foo='foo', bar='bar')
         with pike.Graph('g') as graph:
             pike.glob('.', '*')
         watcher = pike.watch_graph(graph)
@@ -42,28 +42,28 @@ class TestEnvironment(BaseFileTest):
 
     def test_watch_graph_changes(self):
         """ Watching a graph will return new files if files change """
-        self._make_files(foo='foo', bar='bar')
+        self.make_files(foo='foo', bar='bar')
         with pike.Graph('g') as graph:
             pike.glob('.', '*')
         watcher = pike.watch_graph(graph)
         ret = watcher.run()
         self.assertItemsEqual([f.data.read() for f in ret['default']],
                               ['foo', 'bar'])
-        self._make_files(foo='foo', bar='foo')
+        self.make_files(foo='foo', bar='foo')
         ret = watcher.run()
         self.assertItemsEqual([f.data.read() for f in ret['default']],
                               ['foo', 'foo'])
 
     def test_watch_graph_partial_changes(self):
         """ Watching a graph with partial runs will return new files """
-        self._make_files(foo='foo', bar='bar')
+        self.make_files(foo='foo', bar='bar')
         with pike.Graph('g') as graph:
             pike.glob('.', '*')
         watcher = pike.watch_graph(graph, partial=True)
         ret = watcher.run()
         self.assertItemsEqual([f.data.read() for f in ret['default']],
                               ['foo', 'bar'])
-        self._make_files(foo='foo', bar='foo')
+        self.make_files(foo='foo', bar='foo')
         ret = watcher.run()
         self.assertItemsEqual([f.data.read() for f in ret['default']],
                               ['foo', 'foo'])
@@ -80,7 +80,7 @@ class TestEnvironment(BaseFileTest):
     def test_lookup(self):
         """ Lookup returns full file path """
         env = pike.Environment()
-        self._make_files('foo')
+        self.make_files('foo')
         with pike.Graph('g') as graph:
             pike.glob('.', '*')
         env.add(graph)
@@ -101,7 +101,7 @@ class TestEnvironment(BaseFileTest):
     def test_lookup_missing_watch(self):
         """ Lookup if missing reruns graphs if watch=True """
         env = pike.Environment(watch=True)
-        self._make_files('foo')
+        self.make_files('foo')
         with pike.Graph('g') as graph:
             pike.glob('.', '*')
         env.add(graph)
@@ -125,7 +125,7 @@ class TestEnvironment(BaseFileTest):
 
     def test_clean(self):
         """ Cleaning directory should delete unknown files """
-        self._make_files('foo.py', 'bar.js')
+        self.make_files('foo.py', 'bar.js')
         env = pike.Environment()
         with pike.Graph('g') as graph:
             pike.glob('.', '*.py')
@@ -143,7 +143,7 @@ class TestEnvironment(BaseFileTest):
 
     def test_clean_dry_run(self):
         """ A dry run will mark files for deletion but leave them on disk """
-        self._make_files('foo.py', 'bar.js')
+        self.make_files('foo.py', 'bar.js')
         env = pike.Environment()
         with pike.Graph('g') as graph:
             pike.glob('.', '*.py')

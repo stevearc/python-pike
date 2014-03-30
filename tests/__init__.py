@@ -43,7 +43,7 @@ class BaseFileTest(unittest.TestCase):
         os.chdir(self.prevdir)
         shutil.rmtree(self.tempdir)
 
-    def _make_files(self, *files, **kwargs):
+    def make_files(self, *files, **kwargs):
         """
         Shortcut to create files on disk.
 
@@ -53,9 +53,9 @@ class BaseFileTest(unittest.TestCase):
         """
         for filename in files:
             if isinstance(filename, dict):
-                self._make_files(**filename)
+                self.make_files(**filename)
             else:
-                self._make_files(**{filename: 'foo'})
+                self.make_files(**{filename: 'foo'})
 
         for filename, data in six.iteritems(kwargs):
             filename = os.path.join(self.tempdir, filename)
@@ -64,6 +64,12 @@ class BaseFileTest(unittest.TestCase):
                 os.makedirs(basename)
             with open(filename, 'w') as ofile:
                 ofile.write(data)
+
+    def assert_files_equal(self, first, second, msg=None):
+        """ Assert that a list of ``FileMeta`` objects has these file paths """
+        paths = [os.path.abspath(item.fullpath) for item in first]
+        abspaths = map(os.path.abspath, second)
+        self.assertItemsEqual(paths, abspaths, msg)
 
 # pylint: disable=E1101
 if six.PY3:  # pragma: no cover

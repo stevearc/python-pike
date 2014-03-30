@@ -16,8 +16,8 @@ TODO
 
 TODO
 ====
-* Watching can use mtime instead of md5
-* Maybe get rid of FileDataFile?
 * Check if pyramid url routing resolves relative links for us
 * Django support
 * Flask support
+* Test coverage
+* More node types

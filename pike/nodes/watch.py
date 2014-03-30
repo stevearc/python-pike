@@ -1,31 +1,14 @@
 """ Nodes for watching files for changes. """
+import os
+
 import copy
 import six
-from hashlib import md5  # pylint: disable=E0611
 
 from .base import Node
 from pike.exceptions import StopProcessing
 from pike.items import FileDataBlob
 from pike.sqlitedict import SqliteDict
 from pike.util import md5stream
-
-
-class FingerprintNode(Node):
-
-    """
-    Process all files passed in and return a single fingerprint
-
-    """
-    name = 'fingerprint'
-
-    def process(self, *streams):
-        digest = md5()
-        for stream in streams:
-            for item in stream:
-                with item.data.open() as filestream:
-                    for chunk in iter(lambda: filestream.read(8192), ''):
-                        digest.update(chunk)
-        return digest.digest()
 
 
 class ChangeListenerNode(Node):
@@ -41,12 +24,22 @@ class ChangeListenerNode(Node):
     stop : bool, optional
         If True, stop processing the graph if no changes are detected at this
         node (default True)
+    cache : str, optional
+        Name of the file to cache data in. By default will cache data in
+        memory.
+    key : str, optional
+        Table name to use inside the ``cache`` file. Must be present if
+        ``cache`` is non-None.
+    fingerprint: str or callable
+        Function that takes a file and returns a fingerprint. May also be the
+        strings 'md5' or 'mtime', which will md5sum the file or check the
+        modification time respectively. (default 'md5')
 
     """
     name = 'change_listener'
     outputs = ('default', 'all')
 
-    def __init__(self, stop=True, cache=None, key=None):
+    def __init__(self, stop=True, cache=None, key=None, fingerprint='md5'):
         super(ChangeListenerNode, self).__init__()
         self.stop = stop
         if cache is None:
@@ -56,13 +49,27 @@ class ChangeListenerNode(Node):
         else:
             self.checksums = SqliteDict(cache, key, autocommit=False,
                                         synchronous=0)
+        if fingerprint == 'md5':
+            self.fingerprint = self._md5
+        elif fingerprint == 'mtime':
+            self.fingerprint = self._mtime
+        else:
+            self.fingerprint = fingerprint
+
+    def _md5(self, item):
+        """ md5sum a file """
+        with item.data.open() as filestream:
+            return md5stream(filestream)
+
+    def _mtime(self, item):
+        """ Get the modification time of a file """
+        return os.path.getmtime(item.fullpath)
 
     def process(self, stream):
         changed = []
         all_items = []
         for item in stream:
-            with item.data.open() as filestream:
-                fingerprint = md5stream(filestream)
+            fingerprint = self.fingerprint(item)
             if fingerprint != self.checksums.get(item.fullpath):
                 self.checksums[item.fullpath] = fingerprint
                 changed.append(item)
@@ -121,6 +128,15 @@ class CacheNode(Node):
     ..note::
         The CacheNode handles new and changed files, but if you remove a file
         it will still appear in the output of the CacheNode.
+
+    Parameters
+    ----------
+    cache : str, optional
+        Name of the file to cache data in. By default will cache data in
+        memory.
+    key : str, optional
+        Table name to use inside the ``cache`` file. Must be present if
+        ``cache`` is non-None.
 
     """
 

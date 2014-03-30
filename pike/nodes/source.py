@@ -47,6 +47,8 @@ class GlobNode(SourceNode):
         super(GlobNode, self).__init__(root)
         self.patterns = patterns
         self.prefix = prefix
+        prefix_arg = ', %r' % prefix if prefix else ''
+        self.name = 'glob(%r, %r%s)' % (root, patterns, prefix_arg)
 
     def files(self):
         return recursive_glob(self.root, self.patterns, self.prefix)

@@ -301,6 +301,8 @@ class Graph(object):
         inputs here.
 
         """
+        if not self._finalized:
+            raise ValueError("Must call finalize() before running %s" % self)
         inputs = {}
         if (args or kwargs) and self.source is None:
             raise TypeError("This graph takes no inputs")

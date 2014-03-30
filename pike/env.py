@@ -18,7 +18,7 @@ from .sqlitedict import SqliteDict
 LOG = logging.getLogger(__name__)
 
 
-def watch_graph(graph, partial=False, cache=None):
+def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
     """
     Construct a copy of a graph that will watch source nodes for changes.
 
@@ -50,7 +50,8 @@ def watch_graph(graph, partial=False, cache=None):
                 edge = Edge(n2=NoopNode())
             # Funnel files through a change listener
             key = new_graph.name + '_listen_' + str(i)
-            listener = ChangeListenerNode(stop=False, cache=cache, key=key)
+            listener = ChangeListenerNode(stop=False, cache=cache, key=key,
+                                          fingerprint=fingerprint)
             node.connect(listener)
             # Create a fan-in, fan-out with the changed files that goes through
             # a ChangeEnforcer. That way processing will continue even if only
@@ -71,7 +72,8 @@ class Environment(object):
 
     """
 
-    def __init__(self, watch=False, cache=None):
+    def __init__(self, watch=False, cache=None, fingerprint='md5'):
+        self._fingerprint = fingerprint
         self._cache = {}
         self._graphs = {}
         self._gen_files = {}
@@ -105,7 +107,8 @@ class Environment(object):
                 graph.connect(self.default_output, '*', '*')
             graph = wrapper
         if self.watch:
-            graph = watch_graph(graph, partial, self._cache_file)
+            graph = watch_graph(graph, partial, self._cache_file,
+                                self._fingerprint)
 
         self._graphs[graph.name] = graph
 
