@@ -154,9 +154,7 @@ def md5sum(filename):
 def md5stream(stream):
     """ Calulate the md5 checksum of a stream of data. """
     digest = md5()
-    for chunk in iter(lambda: stream.read(8192), ''):
-        if isinstance(chunk, six.text_type):
-            chunk = chunk.encode('utf-8')
+    for chunk in iter(lambda: stream.read(8192), b''):
         digest.update(chunk)
     return digest.hexdigest()
 

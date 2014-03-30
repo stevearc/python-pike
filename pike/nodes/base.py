@@ -197,7 +197,7 @@ class Edge(object):
         n1 = '%s[%s]' % (self.n1, self.output_name)
         n2 = str(self.n2)
         if self.input_name is not None:
-            n2 += '[%s]' % self.input_name
+            n2 = '[%s]' % self.input_name + n2
         return '%s -> %s' % (n1, n2)
 
 
@@ -227,6 +227,13 @@ class Node(object):
         self.ein = []
         from pike import Graph
         Graph.register_node(self)
+
+    @property
+    def source(self):
+        """ True if this node accepts no inputs and generates output """
+        argspec = inspect.getargspec(self.process)
+        return (len(self.outputs) > 0 and not argspec.varargs and not
+                argspec.keywords and len(argspec.args) == 1)
 
     @property
     def accepts_input(self):
@@ -455,12 +462,17 @@ class LinkNode(Node):
     """ Wrap a graph for insertion into another graph """
 
     def __init__(self, subgraph):
-        super(LinkNode, self).__init__(subgraph.name)
+        super(LinkNode, self).__init__()
+        self.name = str(subgraph)
         self.subgraph = subgraph
         if subgraph.sink is not None:
             self.outputs = subgraph.sink.outputs
         else:
             self.outputs = ()
+
+    @property
+    def source(self):
+        return self.subgraph.source is None
 
     def process(self, *args, **kwargs):
         return self.subgraph.run(*args, **kwargs)

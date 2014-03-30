@@ -1,4 +1,5 @@
 """ Template extensions. """
+from __future__ import unicode_literals
 
 from jinja2 import nodes
 from jinja2.ext import Extension
@@ -56,6 +57,6 @@ class JinjaExtension(Extension):
         if env is None:
             raise RuntimeError('Pike not found')
         try:
-            return u''.join([caller(data) for data in env.run(name)[key]])
+            return ''.join([caller(data) for data in env.run(name)[key]])
         except KeyError:
-            return u''
+            return ''

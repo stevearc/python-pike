@@ -9,9 +9,9 @@ from .exceptions import ValidationError, StopProcessing
 
 
 def includeme(config):
-    """ Redirect to the pyramid adapter's includeme """
-    from .server import pyramid_adapter as adapter
-    adapter.includeme(config)
+    """ Redirect to the pyramid extension's includeme """
+    from .server import pyramid_extension as extension
+    extension.includeme(config)
 
 
 def _make_change_listener():

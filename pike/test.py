@@ -62,7 +62,9 @@ class BaseFileTest(unittest.TestCase):
             basename = os.path.dirname(filename)
             if not os.path.exists(basename):
                 os.makedirs(basename)
-            with open(filename, 'w') as ofile:
+            if isinstance(data, six.text_type):
+                data = data.encode('utf-8')
+            with open(filename, 'wb') as ofile:
                 ofile.write(data)
 
     def assert_files_equal(self, first, second, msg=None):

@@ -1,28 +1,19 @@
 """
-Pike adapter for Pyramid.
+Pike extension for Pyramid.
 
 """
+import os
+
 from pyramid.httpexceptions import HTTPNotFound
 from pyramid.response import FileResponse
 from pyramid.settings import asbool
 
-import os
-from ..env import Environment
-from ..graph import Graph
-from ..nodes import WriteNode, UrlNode, XargsNode
+from pike import Environment, Graph, WriteNode, UrlNode, XargsNode
 
 
 def serve_asset(request):
     """ A view that will serve generated assets """
-    pieces = request.matchdict['path']
-    if '..' in pieces:
-        # TODO: (stevearc 2014-03-14) Do I need this? Does pyramid url routing
-        # handle relative paths?
-        return HTTPNotFound()
-    # Don't serve files beginning with '_' or '.'
-    if pieces[-1].startswith('_') or pieces[-1].startswith('.'):
-        return HTTPNotFound()
-    path = '/'.join(pieces)
+    path = '/'.join(request.matchdict['path'])
     fullpath = request.registry.pike_env.lookup(path)
     if fullpath and os.path.exists(fullpath):
         return FileResponse(fullpath, request=request, cache_max_age=31556926)
@@ -37,9 +28,11 @@ def includeme(config):
     output_dir = settings.get('pike.output_dir', 'gen')
     watch = asbool(settings.get('pike.watch', True))
     path = settings.get('pike.url_prefix', 'gen').strip('/')
+    serve_files = asbool(settings.get('pike.serve_files', True))
 
-    config.add_route(path, '/%s/*path' % path)
-    config.add_view(serve_asset, route_name=path)
+    if serve_files:
+        config.add_route('pike_assets', '/%s/*path' % path)
+        config.add_view(serve_asset, route_name='pike_assets')
 
     with Graph('write-and-gen-url') as write_and_url:
         WriteNode(output_dir).connect(UrlNode(path))

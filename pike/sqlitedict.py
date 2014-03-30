@@ -97,6 +97,7 @@ class SqliteDict(MutableMapping):
         if flag == 'n':
             if os.path.exists(filename):
                 os.remove(filename)
+        tablename = tablename.replace('-', '_').replace(' ', '_')
         self.filename = filename
         self.tablename = tablename
         self.autocommit = autocommit

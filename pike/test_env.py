@@ -1,7 +1,7 @@
 """ Tests for the pike environment """
 import os
 
-from mock import MagicMock
+from mock import patch
 
 import pike
 from .test import ParrotNode, BaseFileTest
@@ -48,11 +48,11 @@ class TestEnvironment(BaseFileTest):
         watcher = pike.watch_graph(graph)
         ret = watcher.run()
         self.assertItemsEqual([f.data.read() for f in ret['default']],
-                              ['foo', 'bar'])
+                              [b'foo', b'bar'])
         self.make_files(foo='foo', bar='foo')
         ret = watcher.run()
         self.assertItemsEqual([f.data.read() for f in ret['default']],
-                              ['foo', 'foo'])
+                              [b'foo', b'foo'])
 
     def test_watch_graph_partial_changes(self):
         """ Watching a graph with partial runs will return new files """
@@ -62,11 +62,11 @@ class TestEnvironment(BaseFileTest):
         watcher = pike.watch_graph(graph, partial=True)
         ret = watcher.run()
         self.assertItemsEqual([f.data.read() for f in ret['default']],
-                              ['foo', 'bar'])
+                              [b'foo', b'bar'])
         self.make_files(foo='foo', bar='foo')
         ret = watcher.run()
         self.assertItemsEqual([f.data.read() for f in ret['default']],
-                              ['foo', 'foo'])
+                              [b'foo', b'foo'])
 
     def test_unique(self):
         """ Graphs must have unique names in an Environment """
@@ -115,13 +115,14 @@ class TestEnvironment(BaseFileTest):
         env = pike.Environment()
         output = pike.Graph('output')
         output.sink = pike.noop()
-        output.run = MagicMock(return_value=[])
-        env.set_default_output(output)
-        with pike.Graph('g') as graph:
-            pike.glob('.', '*')
-        env.add(graph)
-        env.run_all()
-        output.run.assert_called_with([])
+        with patch.object(output, 'run') as run:
+            run.return_value = []
+            env.set_default_output(output)
+            with pike.Graph('g') as graph:
+                pike.glob('.', '*')
+            env.add(graph)
+            env.run_all()
+            run.assert_called_with([])
 
     def test_clean(self):
         """ Cleaning directory should delete unknown files """

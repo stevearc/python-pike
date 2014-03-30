@@ -60,8 +60,11 @@ def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
             if not partial:
                 listener.connect(enforcer, output_name='all', input_name=str(i)
                                  + '_all')
+            input_name = edge.input_name
+            if input_name == '*':
+                input_name = None
             enforcer.connect(edge.n2, output_name=str(i),
-                             input_name=edge.input_name)
+                             input_name=input_name)
     return new_graph
 
 
@@ -72,15 +75,14 @@ class Environment(object):
 
     """
 
-    def __init__(self, watch=False, cache=None, fingerprint='md5'):
+    def __init__(self, watch=False, cache=':memory:', fingerprint='md5'):
         self._fingerprint = fingerprint
-        self._cache = {}
         self._graphs = {}
-        self._gen_files = {}
         self._cache_file = cache
-        if cache is not None:
-            self._cache = SqliteDict(cache, 'processed', autocommit=False, synchronous=0)
-            self._gen_files = SqliteDict(cache, 'file_paths', autocommit=False, synchronous=0)
+        self._cache = SqliteDict(cache, 'processed', autocommit=False,
+                                 synchronous=0)
+        self._gen_files = SqliteDict(cache, 'file_paths', autocommit=False,
+                                     synchronous=0)
         self.default_output = None
         self.watch = watch
 
@@ -99,18 +101,19 @@ class Environment(object):
             This argument will be passed to :meth:`~.watch_graph`
 
         """
-        if graph.name in self._graphs:
+        name = graph.name
+        if name in self._graphs:
             raise KeyError("Graph '%s' already exists in environment!" %
                            graph.name)
         if self.default_output is not None and not ignore_default_output:
-            with Graph(graph.name + '-wrapper') as wrapper:
+            with Graph(name + '-wrapper') as wrapper:
                 graph.connect(self.default_output, '*', '*')
             graph = wrapper
         if self.watch:
             graph = watch_graph(graph, partial, self._cache_file,
                                 self._fingerprint)
 
-        self._graphs[graph.name] = graph
+        self._graphs[name] = graph
 
     def set_default_output(self, graph):
         """
@@ -161,10 +164,9 @@ class Environment(object):
                             # (asset pipeline, location on disk)
                             self._gen_files[item.filename] = \
                                 (name, item.fullpath)
+                self._gen_files.commit()
                 self._cache[name] = results
-                if self._cache_file is not None:
-                    self._cache.commit()
-                    self._gen_files.commit()
+                self._cache.commit()
             except StopProcessing:
                 LOG.debug("No changes for %s", name)
         return self._cache[name]

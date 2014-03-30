@@ -217,7 +217,7 @@ class Graph(object):
 
     def source_nodes(self):
         """ Get all :class:`~pike.SourceNode`s in the graph """
-        return [node for node in self.nodes if isinstance(node, SourceNode)]
+        return [node for node in self.nodes if node.source]
 
     def add(self, node):
         """

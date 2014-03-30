@@ -93,7 +93,7 @@ class FileDataFile(IFileData):
         self.filename = filename
 
     def open(self):
-        return open(self.filename, 'r')
+        return open(self.filename, 'rb')
 
     def read(self):
         with self.open() as ifile:

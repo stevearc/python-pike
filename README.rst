@@ -16,7 +16,6 @@ TODO
 
 TODO
 ====
-* Check if pyramid url routing resolves relative links for us
 * Django support
 * Flask support
 * Test coverage
