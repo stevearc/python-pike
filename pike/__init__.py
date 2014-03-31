@@ -17,7 +17,7 @@ def includeme(config):
 def flaskme(app):
     """ Redirect to the flask extension's configure """
     from .server import flask_extension
-    flask_extension.configure(app)
+    return flask_extension.configure(app)
 
 
 # pylint: disable=C0103

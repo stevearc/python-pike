@@ -13,8 +13,24 @@ run all of your graphs with :meth:`pike.env.Environment.run_all`, or you can
 run one at a time by passing the graph name to
 :meth:`pike.env.Environment.run`.
 
-.. todo::
-    Document default_output for environment
+You may want to always perform a set of actions after every graph you create.
+For example, you may want to write all files to a directory and generate urls
+for those files. You can set a default graph that will be appended to all
+graphs in the Environment.
+
+.. code-block:: python
+
+    with pike.Graph('output') as output_graph:
+        pike.write('output') | pike.url('static')
+    env = pike.Environment()
+    env.set_default_output(output_graph)
+
+    with pike.Graph('lib.js') as graph:
+        pike.glob('app', '*.js')
+    env.add(graph) # This will automatically hook it up to the output_graph
+
+If you need to ignore the default output for a single graph, use the
+``ignore_default_output`` argument to :meth:`~pike.env.Environment.add`.
 
 .. _env_caching:
 

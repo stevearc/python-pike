@@ -3,6 +3,7 @@ app.jinja_env.add_extension("pike.ext.JinjaExtension")
 
 """
 import os
+from pike.util import resource_spec
 
 from flask import abort, send_from_directory
 
@@ -15,11 +16,15 @@ def configure(app):
     watch = app.config.get('PIKE_WATCH', True)
     url_prefix = app.config.get('PIKE_URL_PREFIX', 'gen').strip('/')
     serve_files = app.config.get('PIKE_SERVE_FILES', True)
-    cache_file = app.config.get('PIKE_CACHE_FILE', '.pike-cache')
+    cache_file = app.config.get('PIKE_CACHE_FILE')
+    if cache_file is None:
+        cache_file = os.path.join(resource_spec(output_dir), '.pike-cache')
+    else:
+        cache_file = resource_spec(cache_file)
 
     env = get_environment(watch, cache_file, url_prefix, output_dir)
     app.jinja_env.add_extension("pike.ext.JinjaExtension")
-    app.config['PIKE'] = app.jinja_env.pike = env
+    app.jinja_env.pike = env
 
     if serve_files:
         @app.route('/%s/<path:filename>' % url_prefix)
@@ -34,3 +39,4 @@ def configure(app):
                 return send_from_directory(directory, fullpath)
             else:
                 return abort(404)
+    return env

@@ -81,8 +81,7 @@ class TestFlask(BaseFileTest):
             'foo.js': b"alert('hello world');",
         }
         self.make_files(files)
-        pike.flaskme(app)
-        env = app.config['PIKE']
+        env = pike.flaskme(app)
         with pike.Graph('assets') as graph:
             pike.glob('.', '*')
         env.add(graph)

@@ -66,10 +66,58 @@ The name of the file where pike will cache its data. Default will be
 
 Flask
 -----
-.. todo::
-    Document flask
+You can enable pike from your flask app by making a call to
+:meth:`pike.flaskme`. This will create an Environment, set up the
+:ref:`jinja2 extension <jinja2>`, and optionally create an endpoint to
+serve the generated files.
 
-pike.flaskme(app)
+.. code-block:: python
+
+    app = Flask(__name__)
+    env pike.flaskme(app)
+    with pike.Graph('lib.js') as graph:
+        pike.glob('lib', '*.js')
+    env.add(graph)
+
+You may configure the behavior of :meth:`~pike.flaskme` with variables
+in your ``app.config``.
+
+Settings
+^^^^^^^^
+
+PIKE_OUTPUT_DIR
+~~~~~~~~~~~~~~~
+**Argument:** str, optional
+
+The directory to write resources to. Default ``'gen'``. This may be a
+file path or a package specification (e.g. ``'mypackage:images/'``)
+
+PIKE_WATCH
+~~~~~~~~~~
+**Argument:** bool, optional
+
+If True, will watch source files for changes. Default ``True``.
+
+PIKE_URL_PREFIX
+~~~~~~~~~~~~~~~
+**Argument:** str, optional
+
+Prefix all generated file urls with this string. Default ``'gen/'``.
+
+PIKE_SERVE_FILES
+~~~~~~~~~~~~~~~~
+**Argument:** bool, optional
+
+If False, flask will not serve the generated files. You will need to set up a
+web server (nginx, Apache, etc) to serve the files for you. You could also use
+the flask static directory as the ``PIKE_OUTPUT_DIR``. Default ``True``.
+
+PIKE_CACHE_FILE
+~~~~~~~~~~~~~~~
+**Argument:** str, optional
+
+The name of the file where pike will cache its data. Default will be
+``'.pike-cache'`` inside of ``PIKE_OUTPUT_DIR``.
 
 Django
 ------
