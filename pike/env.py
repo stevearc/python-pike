@@ -90,10 +90,14 @@ class Environment(object):
         The method to use for fingerprinting files when ``watch=True``. See
         :class:`~pike.nodes.watch.ChangeListenerNode` for details. (default
         'md5')
+    throttle : int, optional
+        If ``watch=True``, only re-run graphs once-per-``throttle`` seconds
+        (default 2).
 
     """
 
-    def __init__(self, watch=False, cache=':memory:', fingerprint='md5'):
+    def __init__(self, watch=False, cache=':memory:', fingerprint='md5',
+                 throttle=2):
         self._fingerprint = fingerprint
         self._graphs = {}
         self._cache_file = cache
@@ -103,6 +107,8 @@ class Environment(object):
                                      synchronous=0)
         self.default_output = None
         self.watch = watch
+        self._expires = {}
+        self._throttle = 2
 
     def add(self, graph, ignore_default_output=False, partial=False):
         """
@@ -168,6 +174,11 @@ class Environment(object):
             Same output as the graph
 
         """
+        # Throttle runs if watch=True
+        if self.watch:
+            if self._expires.get(name, 0) > time.time():
+                return self._cache[name]
+
         if bust or self.watch or name not in self._cache:
             LOG.info("Running %s", name)
             try:
@@ -192,6 +203,8 @@ class Environment(object):
                     LOG.error("Exception along path %s",
                               ' -> '.join([str(node) for node in e.path]))
                 raise
+        if self.watch:
+            self._expires[name] = time.time() + self._throttle
         return self._cache[name]
 
     def run_all(self, bust=False):
@@ -239,7 +252,7 @@ class Environment(object):
                         os.remove(fullpath)
         return removed
 
-    def run_forever(self, sleep=2, daemon=False):
+    def run_forever(self, daemon=False):
         """
         Rerun graphs forever, busting the env cache each time.
 
@@ -254,8 +267,7 @@ class Environment(object):
 
         """
         if daemon:
-            thread = threading.Thread(target=self.run_forever,
-                                      kwargs={'sleep': sleep})
+            thread = threading.Thread(target=self.run_forever)
             thread.daemon = True
             thread.start()
             return thread
@@ -266,7 +278,7 @@ class Environment(object):
                 break
             except Exception:
                 LOG.exception("Error while serving forever!")
-            time.sleep(sleep)
+            time.sleep(self._throttle)
 
     def lookup(self, path):
         """
@@ -283,20 +295,10 @@ class Environment(object):
             Absolute path of the generated asset (if it exists). If the path is
             known to be invalid, this value will be None.
 
-        Notes
-        -----
-        .. todo::
-            Requesting an existing file doesn't rebuild changes
-
         """
+        if self.watch:
+            self.run_all(True)
         if path not in self._gen_files:
-            if self.watch:
-                self.run_all(True)
-                if path not in self._gen_files:
-                    return None
-            else:
-                return None
-        name, fullpath = self._gen_files[path]
-        if self.watch and not os.path.exists(fullpath):
-            self.run(name, True)
+            return None
+        fullpath = self._gen_files[path][1]
         return fullpath

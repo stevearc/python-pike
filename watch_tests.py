@@ -48,12 +48,12 @@ def main():
                         help="Collect coverage information")
     args = parser.parse_args()
 
-    env = pike.Environment(watch=True, cache='.pike-cache')
+    env = pike.Environment(watch=True, cache='.pike-cache', throttle=1)
     with pike.Graph('tests') as graph:
         runner = TestRunnerNode(args.coverage)
         pike.glob('pike', '*.py') | runner
     env.add(graph)
-    env.run_forever(sleep=1)
+    env.run_forever()
 
 if __name__ == '__main__':
     main()
