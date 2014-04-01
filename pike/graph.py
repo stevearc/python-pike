@@ -363,7 +363,7 @@ class Graph(object):
 
     __ior__ = __or__
 
-    def dot(self, indent=''):
+    def dot(self, indent='', style=None):
         """
         Create dot syntax to represent this graph
 
@@ -372,11 +372,35 @@ class Graph(object):
         indent : str, optional
             Spaces to prefix the graph with. If more that 0, this will be
             written out as a cluster.
+        style : dict, optional
+            Style parameters for nodes and edges. This should be a mapping of
+            nodes and edges to a dict of style parameters for dot. Examples
+            below.
 
-        Notes
-        -----
-        .. todo::
-            Style parameters for dot
+        Returns
+        -------
+        dot : str
+            Representation of the graph in dot format
+
+        Examples
+        --------
+        .. code-block:: python
+
+            with pike.Graph('graph') as graph:
+                n1 = pike.glob('app', '*.js')
+                n2 = pike.concat('out.js')
+                n1 | n2
+
+            style = {
+                n2: {
+                    'color': 'red',
+                    'label': '"js rollup"',
+                },
+                n1.eout[0]: {
+                    'color': 'red',
+                },
+            }
+            graph.dot(style=style)
 
         """
         name = re.sub(r'[^A-Za-z0-9]', '_', self.name)
@@ -387,16 +411,27 @@ class Graph(object):
         else:
             lines.append(indent + 'digraph %s {' % name)
         for node in self.nodes:
-            lines.append(node.dot(indent + '  '))
+            lines.append(node.dot(indent + '  ', style=style))
         lines.append('}')
         return ('\n%s' % indent).join(lines)
 
-    def render(self, outfile):
-        """ Render this graph to an image file using graphviz """
+    def render(self, outfile, style=None):
+        """
+        Render this graph to an image file using graphviz.
+
+        Parameters
+        ----------
+        outfile : str
+            Path to the output file to render. Render format is determined by
+            the file suffix.
+        style : dict, optional
+            see :meth:`~.dot`
+
+        """
         img_format = os.path.splitext(outfile)[1][1:]
         try:
             with open('graph.dot', 'w') as ofile:
-                ofile.write(self.dot())
+                ofile.write(self.dot(style=style))
             code = call(['dot', '-T' + img_format, '-o', outfile, 'graph.dot'])
             if code != 0:
                 raise RuntimeError("Dot command failed! Is graphviz "
@@ -405,7 +440,7 @@ class Graph(object):
             if os.path.exists('graph.dot'):
                 os.remove('graph.dot')
 
-    def show(self, viewer=None, format='png'):
+    def show(self, viewer=None, format='png', style=None):
         """
         Compile and view a graphviz image of the graph.
 
@@ -417,6 +452,8 @@ class Graph(object):
         format : str, optional
             The graphviz format to compile into (the -T argument). Default
             'png'.
+        style : dict, optional
+            see :meth:`~.dot`
 
         """
         if viewer is None:
@@ -427,7 +464,7 @@ class Graph(object):
             progs = [viewer]
         with tempd() as tmp:
             outfile = os.path.join(tmp, 'graph.' + format)
-            self.render(outfile)
+            self.render(outfile, style=style)
             for cmd in progs:
                 code = call([cmd, outfile])
                 if code == 0:

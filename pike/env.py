@@ -1,10 +1,12 @@
 """ Environments for running groups of graphs. """
 import os
 import time
+from datetime import datetime
 
 import copy
 import logging
 import six
+import tempfile
 import threading
 
 from .exceptions import StopProcessing
@@ -74,6 +76,116 @@ def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
     return new_graph
 
 
+class IExceptionHandler(object):
+
+    """
+    Interface for exception handlers.
+
+    This class can intercept exceptions raised while running a graph in an
+    environment and perform some processing.
+
+    """
+
+    def handle_exception(self, graph, exc, node):
+        """
+        Handle an exception.
+
+        Parameters
+        ----------
+        graph : :class:`~pike.graph.Graph`
+        exc : :class:`Exception`
+        node : :class:`~pike.nodes.base.Node`
+
+        Returns
+        -------
+        handled : bool
+            If True, the Environment will not raise the exception
+
+        """
+        raise NotImplementedError
+
+
+def apply_error_style(node, error_style):
+    """
+    Apply error styles to a graph.
+
+    Parameters
+    ----------
+    node : :class:`~pike.nodes.base.Node`
+        The node that threw the exception
+    error_style : dict
+        The styles to apply to nodes and edges involved in the traceback.
+
+    Returns
+    -------
+    style : dict
+        Style dict for passing to :meth:`pike.graph.Graph.dot`.
+
+    """
+    styles = {}
+    for node in node.walk_up(True):
+        styles[node] = error_style
+        for edge in node.ein:
+            styles[edge] = error_style
+    return styles
+
+
+class RenderException(IExceptionHandler):
+
+    """
+    Render traceback as a png in a directory.
+
+    Parameters
+    ----------
+    output_dir : str, optional
+        Directory to render exception into (defaults to temporary directory)
+    error_style : dict, optional
+        Dict of attributes to apply to nodes and edges involved in the
+        traceback (default {'color': 'red'}).
+
+    """
+
+    def __init__(self, output_dir=None, error_style=None):
+        super(RenderException, self).__init__()
+        self.error_style = error_style or {'color': 'red'}
+        if output_dir is None:
+            self.output_dir = tempfile.gettempdir()
+        else:
+            self.output_dir = output_dir
+
+    def handle_exception(self, graph, exc, node):
+        filename = 'exc_%s.png' % datetime.now().isoformat()
+        fullpath = os.path.join(self.output_dir, filename)
+        styles = apply_error_style(node, self.error_style)
+        graph.render(fullpath, style=styles)
+        LOG.error("Exception rendered as %s", fullpath)
+
+
+class ShowException(IExceptionHandler):
+
+    """
+    When an exception occurs, this will auto-open the visual traceback.
+
+    Parameters
+    ----------
+    error_style : dict, optional
+        Dict of attributes to apply to nodes and edges involved in the
+        traceback (default {'color': 'red'}).
+    **kwargs : dict, optional
+        These will be passed to :meth:`~pike.graph.Graph.show`
+
+    """
+
+    def __init__(self, error_style=None, show_kwargs=None):
+        super(ShowException, self).__init__()
+        self.error_style = error_style or {'color': 'red'}
+        self.show_kwargs = show_kwargs or {}
+
+    def handle_exception(self, graph, exc, node):
+        styles = apply_error_style(node, self.error_style)
+        graph.show(style=styles, **self.show_kwargs)
+
+
 class Environment(object):
 
     """
@@ -93,11 +205,20 @@ class Environment(object):
     throttle : int, optional
         If ``watch=True``, only re-run graphs once-per-``throttle`` seconds
         (default 2).
+    exception_handler : :class:`~.IExceptionHandler`, optional
+        When running a graph throws an exception, this handler will do
+        something useful. The default handler will attempt to render a png of
+        the traceback to a temporary directory. Set to ``None`` to do nothing.
 
     """
 
-    def __init__(self, watch=False, cache=':memory:', fingerprint='md5',
-                 throttle=2):
+    def __init__(self,
+                 watch=False,
+                 cache=':memory:',
+                 fingerprint='md5',
+                 throttle=2,
+                 exception_handler=RenderException(),
+                 ):
         self._fingerprint = fingerprint
         self._graphs = {}
         self._cache_file = cache
@@ -108,7 +229,8 @@ class Environment(object):
         self.default_output = None
         self.watch = watch
         self._expires = {}
-        self._throttle = 2
+        self._throttle = throttle
+        self._exc_handler = exception_handler
 
     def add(self, graph, ignore_default_output=False, partial=False):
         """
@@ -199,13 +321,17 @@ class Environment(object):
             except StopProcessing:
                 LOG.debug("No changes for %s", name)
             except Exception as e:
-                if hasattr(e, 'path'):
-                    LOG.error("Exception along path %s",
-                              ' -> '.join([str(node) for node in e.path]))
-                raise
+                if hasattr(e, 'node') and self._exc_handler is not None:
+                    LOG.error("Exception at node %s", e.node)
+                    graph = self._graphs[name]
+                    ret = self._exc_handler.handle_exception(graph, e, e.node)
+                    if not ret:
+                        raise
+                else:
+                    raise
         if self.watch:
             self._expires[name] = time.time() + self._throttle
-        return self._cache[name]
+        return self._cache.get(name)
 
     def run_all(self, bust=False):
         """ Run all graphs. """
@@ -277,7 +403,7 @@ class Environment(object):
             except KeyboardInterrupt:
                 break
             except Exception:
-                LOG.exception("Error while serving forever!")
+                LOG.exception("Error while running forever!")
             time.sleep(self._throttle)
 
     def lookup(self, path):

@@ -33,9 +33,8 @@ def run_node(node, args, kwargs):
     try:
         ret = node.process(*args, **kwargs)
     except Exception as e:
-        if not hasattr(e, 'path'):
-            e.path = []
-        e.path.append(node)
+        if not hasattr(e, 'node'):
+            e.node = node
         raise
     if not isinstance(ret, dict):
         ret = {'default': ret}
@@ -442,7 +441,7 @@ class Node(object):
         Node.__init__(clone)
         return clone
 
-    def _edge_dot(self, source, indent):
+    def _edge_dot(self, source, indent, style=None):
         """ Create dot file syntax for outbound edges """
         lines = []
         for edge in self.eout:
@@ -457,18 +456,73 @@ class Node(object):
             if edge.input_name is not None:
                 label += edge.input_name
             dot_edge = indent + '%s -> %d' % (id(source), id(n2))
-            if label != ':':
-                dot_edge += ' [label="%s"]' % label
+
+            # apply styling
+            if style is not None and edge in style:
+                attrs = dict(style[edge])
+            else:
+                attrs = {}
+            if label != ':' and 'label' not in attrs:
+                attrs['label'] = '"%s"' % label
+            attr_styles = ' '.join(('='.join(t) for t in attrs.items()))
+            if attr_styles:
+                dot_edge += ' [%s]' % attr_styles
+
             lines.append(dot_edge + ';')
         return '\n'.join(lines)
 
-    def dot(self, indent=''):
+    def dot(self, indent='', style=None):
         """ Create dot file syntax for node and outbound edges """
+        if style is not None and self in style:
+            attrs = style[self]
+            attr_styles = ' ' + ' '.join(('='.join(t) for t in attrs.items()))
+        else:
+            attr_styles = ''
         lines = [
-            indent + '%d [label="%s"];' % (id(self), self.name),
-            self._edge_dot(self, indent),
+            indent + '%d [label="%s"%s];' % (id(self), self.name, attr_styles),
+            self._edge_dot(self, indent, style=style),
         ]
         return '\n'.join(lines)
+
+    def walk_up(self, include_self=False):
+        """
+        Walk all nodes in the graph from this point upwards.
+
+        Parameters
+        ----------
+        include_self : bool, optional
+            If True, this node will be included in the generator
+
+        Returns
+        -------
+        nodes : generator
+
+        """
+        if include_self:
+            yield self
+        for edge in self.ein:
+            for n in edge.n1.walk_up(True):
+                yield n
+
+    def walk_down(self, include_self=False):
+        """
+        Walk all nodes in the graph from this point downwards.
+
+        Parameters
+        ----------
+        include_self : bool, optional
+            If True, this node will be included in the generator
+
+        Returns
+        -------
+        nodes : generator
+
+        """
+        if include_self:
+            yield self
+        for edge in self.eout:
+            for n in edge.n2.walk_down(True):
+                yield n
 
 
 class LinkNode(Node):
@@ -491,11 +545,19 @@ class LinkNode(Node):
     def process(self, *args, **kwargs):
         return self.subgraph.run(*args, **kwargs)
 
-    def dot(self, indent=''):
+    def dot(self, indent='', style=None):
         return '\n'.join([
-            self.subgraph.dot(indent),
-            self._edge_dot(self.subgraph.sink, indent),
+            self.subgraph.dot(indent, style=style),
+            self._edge_dot(self.subgraph.sink, indent, style=style),
         ])
+
+    def walk_up(self, include_self=False):
+        for n in self.subgraph.sink.walk_up(True):
+            yield n
+
+    def walk_down(self, include_self=False):
+        for n in self.subgraph.source.walk_down(True):
+            yield n
 
 
 class PlaceholderNode(Node):

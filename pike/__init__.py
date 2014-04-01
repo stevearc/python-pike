@@ -4,7 +4,8 @@ from .nodes import (Node, Edge, PlaceholderNode, NoopNode, SourceNode,
                     GlobNode, CoffeeNode, LessNode, MergeNode, UrlNode,
                     SplitExtNode, WriteNode, ConcatNode, FilterNode, MapNode,
                     XargsNode, ChangeListenerNode, CacheNode)
-from .env import Environment, watch_graph
+from .env import (Environment, watch_graph, RenderException,
+                  ShowException)
 from .exceptions import ValidationError, StopProcessing
 
 
