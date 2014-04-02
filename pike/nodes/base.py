@@ -279,13 +279,23 @@ class Node(object):
             outputs = set([self.outputs])
         else:
             outputs = set(self.outputs)
+
+        # Validate output edges
+        used_outputs = set()
         for edge in self.eout:
+            if edge.output_name in used_outputs:
+                raise ValidationError("%s has duplicate output edge '%s'" %
+                                      (self, edge.output_name))
+            used_outputs.add(edge.output_name)
             if ('*' not in outputs and edge.output_name != '*' and
                     edge.output_name not in outputs):
                 raise ValidationError("%s has no output edge %s" %
                                       (self, edge.output_name))
             # Make sure output edges aren't dangling
             edge.validate()
+        if '*' in used_outputs and len(used_outputs) > 1:
+            raise ValidationError("%s output edge '*' is used; no other "
+                                  "output edges allowed" % self)
 
     def process(self, default):
         """

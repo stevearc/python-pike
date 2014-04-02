@@ -263,7 +263,7 @@ class Graph(object):
         self._finalized = True
 
         # Find source if none explicitly used
-        if self.source.eout:
+        if self.source.eout and not self.source.ein:
             self.nodes.append(self.source)
         else:
             self.source = None
@@ -276,7 +276,7 @@ class Graph(object):
                                               "%s)" % (self.source, node))
 
         # Find sink if none explicitly used
-        if self.sink.ein:
+        if self.sink.ein and not self.sink.eout:
             self.nodes.append(self.sink)
         else:
             self.sink = None
@@ -371,7 +371,7 @@ class Graph(object):
         ----------
         indent : str, optional
             Spaces to prefix the graph with. If more that 0, this will be
-            written out as a cluster.
+            written out as a cluster (dot parlance for a subgraph).
         style : dict, optional
             Style parameters for nodes and edges. This should be a mapping of
             nodes and edges to a dict of style parameters for dot. Examples

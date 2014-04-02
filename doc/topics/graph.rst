@@ -205,8 +205,8 @@ for that, we have `graphviz <http://www.graphviz.org/>`_. There are three handy
 methods to know about:
 
 * :meth:`~pike.graph.Graph.dot` - Returns the dot syntax for drawing this graph
-* :meth:`~pike.graph.Graph.render` - Shells out to ``dot`` to render an image
-* :meth:`~pike.graph.Graph.show` - Attempts to auto-create and auto-open the image for you
+* :meth:`~pike.graph.Graph.render` - Shells out to the ``dot`` command to render an image
+* :meth:`~pike.graph.Graph.show` - Attempts to auto-render and auto-open the image for you
 
 All graphs in this documentation were generated with
 :meth:`~pike.graph.Graph.render`.

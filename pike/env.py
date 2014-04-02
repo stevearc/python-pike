@@ -46,7 +46,6 @@ def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
         if partial:
             sink = CacheNode(cache, new_graph.name + '_cache')
             new_graph.sink.connect(sink, '*', '*')
-            new_graph.sink = sink
         enforcer = ChangeEnforcerNode()
         for i, node in enumerate(new_graph.source_nodes()):
             # Find the outbound edge of the source
@@ -256,7 +255,6 @@ class Environment(object):
             wrapper.name += '-wrapper'
             with wrapper:
                 edge = wrapper.sink.connect(self.default_output, '*', '*')
-                wrapper.sink = edge.n2
             graph = wrapper
         if self.watch:
             graph = watch_graph(graph, partial, self._cache_file,
