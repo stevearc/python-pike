@@ -45,7 +45,7 @@ def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
         # the end
         if partial:
             sink = CacheNode(cache, new_graph.name + '_cache')
-            new_graph.sink.connect(sink)
+            new_graph.sink.connect(sink, '*', '*')
             new_graph.sink = sink
         enforcer = ChangeEnforcerNode()
         for i, node in enumerate(new_graph.source_nodes()):
@@ -202,13 +202,16 @@ class Environment(object):
         The method to use for fingerprinting files when ``watch=True``. See
         :class:`~pike.nodes.watch.ChangeListenerNode` for details. (default
         'md5')
-    throttle : int, optional
-        If ``watch=True``, only re-run graphs once-per-``throttle`` seconds
-        (default 2).
     exception_handler : :class:`~.IExceptionHandler`, optional
         When running a graph throws an exception, this handler will do
         something useful. The default handler will attempt to render a png of
         the traceback to a temporary directory. Set to ``None`` to do nothing.
+
+    Notes
+    -----
+
+    .. todo::
+        Multiple disk cache formats, for running faster in production
 
     """
 
@@ -216,7 +219,6 @@ class Environment(object):
                  watch=False,
                  cache=':memory:',
                  fingerprint='md5',
-                 throttle=2,
                  exception_handler=RenderException(),
                  ):
         self._fingerprint = fingerprint
@@ -228,8 +230,6 @@ class Environment(object):
                                      synchronous=0)
         self.default_output = None
         self.watch = watch
-        self._expires = {}
-        self._throttle = throttle
         self._exc_handler = exception_handler
 
     def add(self, graph, ignore_default_output=False, partial=False):
@@ -252,8 +252,11 @@ class Environment(object):
             raise KeyError("Graph '%s' already exists in environment!" %
                            graph.name)
         if self.default_output is not None and not ignore_default_output:
-            with Graph(name + '-wrapper') as wrapper:
-                graph.connect(self.default_output, '*', '*')
+            wrapper = copy.deepcopy(graph)
+            wrapper.name += '-wrapper'
+            with wrapper:
+                edge = wrapper.sink.connect(self.default_output, '*', '*')
+                wrapper.sink = edge.n2
             graph = wrapper
         if self.watch:
             graph = watch_graph(graph, partial, self._cache_file,
@@ -277,6 +280,10 @@ class Environment(object):
         """
         self.default_output = graph
 
+    def get(self, name):
+        """ Get the cached results of a graph. """
+        return self._cache.get(name)
+
     def run(self, name, bust=False):
         """
         Run a graph and cache the result.
@@ -296,25 +303,18 @@ class Environment(object):
             Same output as the graph
 
         """
-        # Throttle runs if watch=True
-        if self.watch:
-            if self._expires.get(name, 0) > time.time():
-                return self._cache[name]
-
         if bust or self.watch or name not in self._cache:
-            LOG.info("Running %s", name)
+            LOG.debug("Running %s", name)
             try:
                 results = self._graphs[name].run()
-                LOG.debug("Completed %s", name)
+                LOG.info("Ran %s", name)
                 for items in six.itervalues(results):
                     for item in items:
                         if isinstance(item, FileMeta):
                             # Remove data to save memory
                             if hasattr(item, 'data'):
                                 del item.data
-                            # (asset pipeline, location on disk)
-                            self._gen_files[item.filename] = \
-                                (name, item.fullpath)
+                            self._gen_files[item.filename] = item.fullpath
                 self._gen_files.commit()
                 self._cache[name] = results
                 self._cache.commit()
@@ -329,8 +329,6 @@ class Environment(object):
                         raise
                 else:
                     raise
-        if self.watch:
-            self._expires[name] = time.time() + self._throttle
         return self._cache.get(name)
 
     def run_all(self, bust=False):
@@ -365,7 +363,7 @@ class Environment(object):
             raise ValueError("No generated files found. Have you run "
                              "`run_all()`?")
         all_files = set()
-        for _, fullpath in six.itervalues(self._gen_files):
+        for fullpath in six.itervalues(self._gen_files):
             all_files.add(os.path.abspath(fullpath))
         removed = []
         for root, _, files in os.walk(directory):
@@ -378,7 +376,7 @@ class Environment(object):
                         os.remove(fullpath)
         return removed
 
-    def run_forever(self, daemon=False):
+    def run_forever(self, sleep=2, daemon=False):
         """
         Rerun graphs forever, busting the env cache each time.
 
@@ -393,7 +391,8 @@ class Environment(object):
 
         """
         if daemon:
-            thread = threading.Thread(target=self.run_forever)
+            thread = threading.Thread(target=self.run_forever,
+                                      kwargs={'sleep': sleep})
             thread.daemon = True
             thread.start()
             return thread
@@ -404,7 +403,7 @@ class Environment(object):
                 break
             except Exception:
                 LOG.exception("Error while running forever!")
-            time.sleep(self._throttle)
+            time.sleep(sleep)
 
     def lookup(self, path):
         """
@@ -422,9 +421,7 @@ class Environment(object):
             known to be invalid, this value will be None.
 
         """
-        if self.watch:
-            self.run_all(True)
         if path not in self._gen_files:
             return None
-        fullpath = self._gen_files[path][1]
+        fullpath = self._gen_files[path]
         return fullpath

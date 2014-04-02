@@ -9,6 +9,10 @@ from pike.exceptions import StopProcessing
 from pike.items import FileDataBlob
 from pike.sqlitedict import SqliteDict
 from pike.util import md5stream
+try:
+    from collections import OrderedDict
+except ImportError:  # pragma: no cover
+    from ordereddict import OrderedDict
 
 
 class ChangeListenerNode(Node):
@@ -158,18 +162,15 @@ class CacheNode(Node):
             kwargs['default'] = default
         ret = {}
         for stream, items in six.iteritems(kwargs):
+            stream_cache = self.cache.setdefault(stream, OrderedDict())
             for item in items:
-                try:
-                    self.cache[stream][item.fullpath] = item
-                except KeyError:
-                    self.cache[stream] = {item.fullpath: item}
+                stream_cache[item.fullpath] = item
             ret[stream] = []
-            for item in six.itervalues(self.cache.get(stream, {})):
+            for item in six.itervalues(stream_cache):
                 clone = copy.copy(item)
                 clone.data = FileDataBlob(clone.data.read())
                 ret[stream].append(clone)
             if isinstance(self.cache, SqliteDict):
-                self.cache[stream] = self.cache[stream]
-        if isinstance(self.cache, SqliteDict):
-            self.cache.commit()
+                self.cache[stream] = stream_cache
+                self.cache.commit()
         return ret

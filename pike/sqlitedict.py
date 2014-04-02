@@ -113,7 +113,7 @@ class SqliteDict(MutableMapping):
             except os.error:
                 pass
 
-        LOG.info("opening Sqlite table %r in %s", tablename, filename)
+        LOG.debug("opening Sqlite table %r in %s", tablename, filename)
         if autocommit:
             self.conn = sqlite3.connect(self.filename, isolation_level=None,
                                         check_same_thread=False)

@@ -44,10 +44,10 @@ class JinjaExtension(Extension):
 
         call_args = [nodes.Name('ASSET', 'store')]
 
-        return nodes.CallBlock(self.call_method('_run_graph', args), call_args,
+        return nodes.CallBlock(self.call_method('_get_graph', args), call_args,
                                [], body).set_lineno(lineno)
 
-    def _run_graph(self, name, caller=None):
+    def _get_graph(self, name, caller=None):
         """ Run a graph and render the tag contents for each output """
         if ':' in name:
             name, key = name.split(':', 1)
@@ -56,7 +56,10 @@ class JinjaExtension(Extension):
         env = self.environment.pike
         if env is None:
             raise RuntimeError('Pike not found')
+        assets = env.get(name)
+        if assets is None:
+            return ''
         try:
-            return ''.join([caller(data) for data in env.run(name)[key]])
+            return ''.join([caller(data) for data in assets[key]])
         except KeyError:
             return ''
