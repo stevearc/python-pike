@@ -19,6 +19,7 @@ User Guide
     topics/servers
     topics/templates
     topics/nodes
+    topics/deploying
     topics/developing
 
     changes

@@ -98,18 +98,6 @@ class TestEnvironment(BaseFileTest):
         ret = env.lookup('foo')
         self.assertIsNone(ret)
 
-    def test_lookup_missing_watch(self):
-        """ Lookup if missing reruns graphs if watch=True """
-        env = pike.Environment(watch=True)
-        self.make_files('foo')
-        with pike.Graph('g') as graph:
-            pike.glob('.', '*')
-        env.add(graph)
-        ret = env.lookup('foo')
-        self.assertEqual(ret, os.path.join('.', 'foo'))
-        ret = env.lookup('bar')
-        self.assertIsNone(ret)
-
     def test_default_output(self):
         """ Default output is auto appended to all graphs """
         env = pike.Environment()

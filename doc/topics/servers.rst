@@ -2,6 +2,14 @@
 
 Integration with Web Frameworks
 ===============================
+In general, the only integration that you need with web frameworks is the
+ability to fetch the generated data by graph name. Usually this is done inside
+a :ref:`templating language <templates>`. While developing, your server should
+run a builder thread/process adjacent to your server. This is easy to do with
+:meth:`pike.env.Environment.run_forever` with ``daemon=True``.
+
+Production configuration is a little different. Be sure to read up on
+:ref:`deploying` before you run in a production environment.
 
 Pyramid
 -------
@@ -20,6 +28,7 @@ and go nuts:
     with pike.Graph('lib.js') as graph:
         pike.glob('lib', '*.js')
     env.add(graph)
+    env.run_forever(daemon=True)
 
 Settings
 ^^^^^^^^
@@ -78,6 +87,7 @@ serve the generated files.
     with pike.Graph('lib.js') as graph:
         pike.glob('lib', '*.js')
     env.add(graph)
+    env.run_forever(daemon=True)
 
 You may configure the behavior of :meth:`~pike.flaskme` with variables
 in your ``app.config``.
