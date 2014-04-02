@@ -12,7 +12,7 @@ from pike.util import md5stream
 try:
     from collections import OrderedDict
 except ImportError:  # pragma: no cover
-    from ordereddict import OrderedDict
+    from ordereddict import OrderedDict  # pylint: disable=F0401
 
 
 class ChangeListenerNode(Node):
