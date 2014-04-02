@@ -376,7 +376,7 @@ class Environment(object):
                         os.remove(fullpath)
         return removed
 
-    def run_forever(self, sleep=2, daemon=False):
+    def run_forever(self, sleep=2, daemon=False, daemon_proc=False):
         """
         Rerun graphs forever, busting the env cache each time.
 
@@ -388,14 +388,22 @@ class Environment(object):
             How long to sleep between runs. Default 2 seconds.
         daemon : bool, optional
             If True, will run in a background thread (default False)
+        daemon_proc : bool, optional
+            If True, will run in a child process (default False)
 
         """
+        if daemon and daemon_proc:
+            raise TypeError("daemon and daemon_proc cannot both be True")
         if daemon:
             thread = threading.Thread(target=self.run_forever,
                                       kwargs={'sleep': sleep})
             thread.daemon = True
             thread.start()
             return thread
+        elif daemon_proc:
+            pid = os.fork()
+            if pid != 0:
+                return pid
         while True:
             try:
                 self.run_all(bust=True)
