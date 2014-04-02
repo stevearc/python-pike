@@ -306,8 +306,10 @@ class Environment(object):
         if bust or self.watch or name not in self._cache:
             LOG.debug("Running %s", name)
             try:
+                start = time.time() * 1000
                 results = self._graphs[name].run()
-                LOG.info("Ran %s", name)
+                elapsed = int(time.time() * 1000 - start)
+                LOG.info("Ran %s in %d ms", name, elapsed)
                 for items in six.itervalues(results):
                     for item in items:
                         if isinstance(item, FileMeta):
