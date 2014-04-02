@@ -65,12 +65,12 @@ build your assets like this:
     env.run_forever()
 
 While awesome, this feature is a little bit of black magic. What it's actually
-doing behind the scenes is finding all source nodes in the graph (any node that
-subclasses :class:`~pike.nodes.source.SourceNode`) and abusing it. It splices a
+doing behind the scenes is mutating your graph a bit. It finds all source nodes
+(subclass of :class:`~pike.nodes.source.SourceNode`) and splices a
 :class:`~pike.nodes.watch.ChangeListenerNode` and a
-:class:`~pike.nodes.watch.ChangeEnforcerNode` after the sources. These two
-nodes combined will fingerprint the files, watch for changes, and abort early
-if no changes are detected.
+:class:`~pike.nodes.watch.ChangeEnforcerNode` after them. These two nodes
+combined will fingerprint the files, watch for changes, and abort early if no
+changes are detected.
 
 No watching:
 

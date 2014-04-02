@@ -82,11 +82,13 @@ class UrlNode(Node):
 
     def __init__(self, prefix='', bust=False):
         super(UrlNode, self).__init__()
-        self.prefix = prefix
+        self.prefix = prefix.rstrip('/')
+        if not self.prefix.startswith('/'):
+            self.prefix = '/' + self.prefix
         self.bust = bust
 
     def process_one(self, item):
-        item.url = posixpath.join('', self.prefix, item.filename)
+        item.url = posixpath.join(self.prefix, item.filename)
         if self.bust:
             with item.data.open() as stream:
                 item.url += '?' + md5stream(stream)[:8]

@@ -73,6 +73,17 @@ pike.cache_file
 The name of the file where pike will cache its data. Default will be
 ``'.pike-cache'`` inside of ``pike.output_dir``.
 
+pike.load_file
+~~~~~~~~~~~~~~
+**Argument:** str, optional
+
+This setting is intended for *production* deployments where the webserver may
+not have the assets on hand (if they are in a CDN, for example). This is the
+path to a file that was created with :meth:`pike.env.Environment.save`.
+The Environment should **not** call :meth:`~pike.env.Environment.run`,
+:meth:`~pike.env.Environment.run_all`, or
+:meth:`~pike.env.Environment.run_forever`.
+
 Flask
 -----
 You can enable pike from your flask app by making a call to
@@ -128,6 +139,17 @@ PIKE_CACHE_FILE
 
 The name of the file where pike will cache its data. Default will be
 ``'.pike-cache'`` inside of ``PIKE_OUTPUT_DIR``.
+
+PIKE_LOAD_FILE
+~~~~~~~~~~~~~~
+**Argument:** str, optional
+
+This setting is intended for *production* deployments where the webserver may
+not have the assets on hand (if they are in a CDN, for example). This is the
+path to a file that was created with :meth:`pike.env.Environment.save`.
+The Environment should **not** call :meth:`~pike.env.Environment.run`,
+:meth:`~pike.env.Environment.run_all`, or
+:meth:`~pike.env.Environment.run_forever`.
 
 Django
 ------

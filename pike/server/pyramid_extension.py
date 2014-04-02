@@ -4,13 +4,13 @@ Pike extension for Pyramid.
 """
 import os
 
-from pike.util import resource_spec
 from pyramid.httpexceptions import HTTPNotFound
 from pyramid.response import FileResponse
 from pyramid.settings import asbool
 
-from . import get_environment
-from pike import Environment, Graph, WriteNode, UrlNode, XargsNode
+from . import get_environment, cache_file_setting
+from pike.env import Environment
+from pike.util import resource_spec
 
 
 def serve_asset(request):
@@ -29,14 +29,12 @@ def includeme(config):
 
     output_dir = settings.get('pike.output_dir', 'gen')
     watch = asbool(settings.get('pike.watch', True))
-    path = settings.get('pike.url_prefix', 'gen').strip('/')
+    path = settings.get('pike.url_prefix', 'gen')
     serve_files = asbool(settings.get('pike.serve_files', True))
     static_view = asbool(settings.get('pike.static_view', False))
-    cache_file = settings.get('pike.cache_file')
-    if cache_file is None:
-        cache_file = os.path.join(resource_spec(output_dir), '.pike-cache')
-    else:
-        cache_file = resource_spec(cache_file)
+    cache_file = cache_file_setting(output_dir,
+                                    settings.get('pike.cache_file'))
+    load_file = settings.get('pike.load_file')
 
     if serve_files:
         if static_view:
@@ -47,7 +45,12 @@ def includeme(config):
             config.add_route('pike_assets', '/%s/*path' % path)
             config.add_view(serve_asset, route_name='pike_assets')
 
-    env = get_environment(watch, cache_file, path, output_dir)
+    if load_file is None:
+        env = get_environment(watch, cache_file, path, output_dir)
+    else:
+        env = Environment()
+        env.load(resource_spec(load_file))
+
     config.registry.pike_env = env
     config.add_directive('get_pike_env', lambda c: c.registry.pike_env)
 

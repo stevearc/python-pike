@@ -8,9 +8,9 @@ import logging
 import six
 import tempfile
 import threading
+from six.moves import cPickle as pickle  # pylint: disable=F0401
 
 from .exceptions import StopProcessing
-from .graph import Graph
 from .items import FileMeta
 from .nodes import (ChangeListenerNode, ChangeEnforcerNode, CacheNode, Edge,
                     NoopNode)
@@ -18,6 +18,14 @@ from .sqlitedict import SqliteDict
 
 
 LOG = logging.getLogger(__name__)
+
+
+def commit(cache):
+    """ Commit if SqliteDict, else do nothing. """
+    try:
+        cache.commit()
+    except AttributeError:
+        pass
 
 
 def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
@@ -196,7 +204,8 @@ class Environment(object):
         If True, watch all graphs for changes in the source files and rerun
         them if changes are detected (default False)
     cache : str, optional
-        The sqlite file to use as a persistent cache (default ':memory:')
+        The sqlite file to use as a persistent cache (defaults to in-memory
+        dict)
     fingerprint : str or callable, optional
         The method to use for fingerprinting files when ``watch=True``. See
         :class:`~pike.nodes.watch.ChangeListenerNode` for details. (default
@@ -209,24 +218,25 @@ class Environment(object):
     Notes
     -----
 
-    .. todo::
-        Multiple disk cache formats, for running faster in production
-
     """
 
     def __init__(self,
                  watch=False,
-                 cache=':memory:',
+                 cache=None,
                  fingerprint='md5',
                  exception_handler=RenderException(),
                  ):
         self._fingerprint = fingerprint
         self._graphs = {}
         self._cache_file = cache
-        self._cache = SqliteDict(cache, 'processed', autocommit=False,
-                                 synchronous=0)
-        self._gen_files = SqliteDict(cache, 'file_paths', autocommit=False,
+        if cache is not None:
+            self._cache = SqliteDict(cache, 'processed', autocommit=False,
                                      synchronous=0)
+            self._gen_files = SqliteDict(cache, 'file_paths', autocommit=False,
+                                         synchronous=0)
+        else:
+            self._cache = {}
+            self._gen_files = {}
         self.default_output = None
         self.watch = watch
         self._exc_handler = exception_handler
@@ -282,6 +292,17 @@ class Environment(object):
         """ Get the cached results of a graph. """
         return self._cache.get(name)
 
+    def save(self, filename):
+        """ Saved the cached asset metadata to a file """
+        self.run_all(True)
+        with open(filename, 'wb') as ofile:
+            pickle.dump(dict(self._cache), ofile)
+
+    def load(self, filename):
+        """ Load cached asset metadata from a file """
+        with open(filename, 'rb') as ifile:
+            self._cache = pickle.load(ifile)
+
     def run(self, name, bust=False):
         """
         Run a graph and cache the result.
@@ -315,9 +336,9 @@ class Environment(object):
                             if hasattr(item, 'data'):
                                 del item.data
                             self._gen_files[item.filename] = item.fullpath
-                self._gen_files.commit()
+                commit(self._gen_files)
                 self._cache[name] = results
-                self._cache.commit()
+                commit(self._cache)
             except StopProcessing:
                 LOG.debug("No changes for %s", name)
             except Exception as e:

@@ -198,8 +198,8 @@ a graph. Then you can create a macro by calling
 :meth:`~pike.graph.Graph.macro` with the positional and keyword arguments that
 will become the function signature of the macro.
 
-Visualization
--------------
+Pretty Pictures
+---------------
 Sometimes it's helpful to be able to see what a graph actually looks like. And
 for that, we have `graphviz <http://www.graphviz.org/>`_. There are three handy
 methods to know about:

@@ -24,13 +24,13 @@ class DocBuilderNode(pike.Node):
 
 def main():
     """ Run graph forever """
-    env = pike.Environment(watch=True, cache='.pike-cache', throttle=1)
+    env = pike.Environment(watch=True, cache='.pike-cache')
     with pike.Graph('docs') as graph:
         builder = DocBuilderNode()
         pike.glob('doc', '*.rst') | builder
         pike.glob('pike', '*.py') | builder
     env.add(graph)
-    env.run_forever()
+    env.run_forever(sleep=1)
 
 if __name__ == '__main__':
     main()

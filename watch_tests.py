@@ -35,7 +35,8 @@ class TestRunnerNode(pike.Node):
         if self.session is not None:
             status = '^_^' if proc == 0 else 'X_X'
             next_name = 'tests %s' % status
-            subprocess.call(['tmux', 'rename-window', '-t', '%s:%s' % (self.session, self.window_name), next_name])
+            window = '%s:%s' % (self.session, self.window_name)
+            subprocess.call(['tmux', 'rename-window', '-t', window, next_name])
             self.window_name = next_name
         return []
 
@@ -48,12 +49,12 @@ def main():
                         help="Collect coverage information")
     args = parser.parse_args()
 
-    env = pike.Environment(watch=True, cache='.pike-cache', throttle=1)
+    env = pike.Environment(watch=True, cache='.pike-cache')
     with pike.Graph('tests') as graph:
         runner = TestRunnerNode(args.coverage)
         pike.glob('pike', '*.py') | runner
     env.add(graph)
-    env.run_forever()
+    env.run_forever(sleep=1)
 
 if __name__ == '__main__':
     main()
