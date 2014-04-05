@@ -345,9 +345,13 @@ class Environment(object):
                 if hasattr(e, 'node') and self._exc_handler is not None:
                     LOG.error("Exception at node %s", e.node)
                     graph = self._graphs[name]
-                    ret = self._exc_handler.handle_exception(graph, e, e.node)
+                    try:
+                        ret = self._exc_handler.handle_exception(graph, e,
+                                                                 e.node)
+                    except Exception:
+                        LOG.exception("Error while handling exception")
                     if not ret:
-                        raise
+                        raise e
                 else:
                     raise
         return self._cache.get(name)

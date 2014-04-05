@@ -43,6 +43,7 @@ TODO
 ====
 .. todolist::
 
+* env display/show
 * Readme documentation
 * Test coverage
 * More node types
