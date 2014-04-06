@@ -212,8 +212,8 @@ class Environment(object):
         'md5')
     exception_handler : :class:`~.IExceptionHandler`, optional
         When running a graph throws an exception, this handler will do
-        something useful. The default handler will attempt to render a png of
-        the traceback to a temporary directory. Set to ``None`` to do nothing.
+        something useful, like rendering a graph that visually shows you where
+        the error happened.
 
     Notes
     -----
@@ -224,7 +224,7 @@ class Environment(object):
                  watch=False,
                  cache=None,
                  fingerprint='md5',
-                 exception_handler=RenderException(),
+                 exception_handler=None,
                  ):
         self._fingerprint = fingerprint
         self._graphs = {}
