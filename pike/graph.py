@@ -264,7 +264,8 @@ class Graph(object):
 
         # Find source if none explicitly used
         if self.source.eout and not self.source.ein:
-            self.nodes.append(self.source)
+            if self.source not in self.nodes:
+                self.nodes.append(self.source)
         else:
             self.source = None
             for node in self.nodes:
@@ -277,7 +278,8 @@ class Graph(object):
 
         # Find sink if none explicitly used
         if self.sink.ein and not self.sink.eout:
-            self.nodes.append(self.sink)
+            if self.sink not in self.nodes:
+                self.nodes.append(self.sink)
         else:
             self.sink = None
             for node in self.nodes:

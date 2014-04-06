@@ -59,10 +59,12 @@ def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
             # Find the outbound edge of the source
             if node.eout:
                 edge = node.eout[0]
-                edge.n1.eout.remove(edge)
+                edge_index = edge.n2.ein.index(edge)
+                edge.remove()
             else:
                 # If source has no outbound edge, make one.
                 edge = Edge(n2=NoopNode())
+                edge_index = 0
             # Funnel files through a change listener
             key = new_graph.name + '_listen_' + str(i)
             listener = ChangeListenerNode(stop=False, cache=cache, key=key,
@@ -75,11 +77,14 @@ def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
             if not partial:
                 listener.connect(enforcer, output_name='all', input_name=str(i)
                                  + '_all')
+
             if edge.input_name == '*':
                 edge.input_name = None
-            edge.output_name = str(i)
-            edge.n1 = enforcer
-            enforcer.eout.append(edge)
+            input_name = edge.input_name
+            new_edge = enforcer.connect(edge.n2, str(i), input_name)
+            # Preserve edge ordering to preserve argument ordering
+            edge.n2.ein.remove(new_edge)
+            edge.n2.ein.insert(edge_index, new_edge)
     return new_graph
 
 
