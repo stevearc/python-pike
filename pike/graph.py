@@ -318,32 +318,34 @@ class Graph(object):
 
         sink_ret = None
         for node in self.nodes:
-            args_by_node, kwargs = inputs.get(node, ((), {}))
-            if isinstance(args_by_node, dict):
+            args_by_edge, kwargs = inputs.get(node, ((), {}))
+            if isinstance(args_by_edge, dict):
                 args = []
                 # Order positional args by the order the edges were added in
                 for edge in node.ein:
                     if (edge.input_name in (None, '*') and
-                            edge.n1 in args_by_node):
-                        args.append(args_by_node[edge.n1])
+                            edge in args_by_edge):
+                        args.append(args_by_edge[edge])
+                        if node.name == 'merge':
+                            print edge
             else:
-                args = args_by_node
+                args = args_by_edge
             ret = run_node(node, args, kwargs)
             if node == self.sink:
                 sink_ret = ret
             for edge in node.eout:
-                args_by_node, kwargs = inputs.setdefault(edge.n2, ({}, {}))
+                args_by_edge, kwargs = inputs.setdefault(edge.n2, ({}, {}))
                 if edge.output_name == '*':
                     if edge.input_name == '*':
                         a, k = ret_to_args(ret)
                         if a is not None:
-                            args_by_node[node] = a
+                            args_by_edge[edge] = a
                         kwargs.update(k)
                     else:
                         raise BAD_EDGE
                 elif edge.input_name is None:
                     if edge.output_name in ret:
-                        args_by_node[node] = ret[edge.output_name]
+                        args_by_edge[edge] = ret[edge.output_name]
                 elif edge.input_name == '*':
                     raise BAD_EDGE
                 else:
