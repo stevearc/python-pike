@@ -1,4 +1,6 @@
 """ Tests for pike.nodes.watch """
+import time
+import os
 import subprocess
 
 import pike
@@ -37,6 +39,7 @@ class TestChangeListener(BaseFileTest):
         self.make_files(foo='a', bar='b')
         ret = graph.run()
         self.assert_files_equal(ret['default'], ['foo', 'bar'])
-        subprocess.check_call(['touch', 'foo'])
+        new_mtime = time.time() + 1
+        os.utime('foo', (new_mtime, new_mtime))
         ret = graph.run()
         self.assert_files_equal(ret['default'], ['foo'])

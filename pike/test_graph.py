@@ -158,3 +158,17 @@ class TestGraph(unittest.TestCase):
         """ Edges with '*' as just input name are not allowed """
         with self.assertRaises(ValidationError):
             Node('a') | '*' * Node('b')
+
+    def test_stable_ordering(self):
+        """ Ordering of positional edges should determine order of args """
+        with Graph('g') as graph:
+            a = ParrotNode(['a'])
+            p = a | pike.merge()
+            b = ParrotNode(['b'])
+            graph.source | b | p
+        # Make sure that b runs before a
+        if graph.nodes.index(b) > graph.nodes.index(a):
+            graph.nodes.remove(b)
+            graph.nodes.insert(graph.nodes.index(a), b)
+        ret = graph.run()
+        self.assertEqual(list(ret['default']), ['a', 'b'])
