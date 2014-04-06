@@ -59,7 +59,7 @@ def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
             # Find the outbound edge of the source
             if node.eout:
                 edge = node.eout[0]
-                edge.remove()
+                edge.n1.eout.remove(edge)
             else:
                 # If source has no outbound edge, make one.
                 edge = Edge(n2=NoopNode())
@@ -75,11 +75,11 @@ def watch_graph(graph, partial=False, cache=None, fingerprint='md5'):
             if not partial:
                 listener.connect(enforcer, output_name='all', input_name=str(i)
                                  + '_all')
-            input_name = edge.input_name
-            if input_name == '*':
-                input_name = None
-            enforcer.connect(edge.n2, output_name=str(i),
-                             input_name=input_name)
+            if edge.input_name == '*':
+                edge.input_name = None
+            edge.output_name = str(i)
+            edge.n1 = enforcer
+            enforcer.eout.append(edge)
     return new_graph
 
 
