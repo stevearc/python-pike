@@ -326,8 +326,6 @@ class Graph(object):
                     if (edge.input_name in (None, '*') and
                             edge in args_by_edge):
                         args.append(args_by_edge[edge])
-                        if node.name == 'merge':
-                            print edge
             else:
                 args = args_by_edge
             ret = run_node(node, args, kwargs)
