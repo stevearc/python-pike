@@ -119,7 +119,7 @@ def run_cmd(cmd, stdin=None, cwd=None):
                                             stdout + stderr)
     elif stderr:
         LOG.warn("%s", stderr)
-    return stdout.decode(encoding)
+    return stdout
 
 
 @contextlib.contextmanager

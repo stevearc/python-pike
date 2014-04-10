@@ -3,7 +3,7 @@ import os
 
 import contextlib
 import shutil
-from six import StringIO
+from six import BytesIO
 
 from .util import atomic_open
 
@@ -78,7 +78,7 @@ class FileDataStream(IFileData):
             self.stream.seek(0)
 
     def as_file(self, filename):
-        with atomic_open(filename, 'w') as ofile:
+        with atomic_open(filename, 'wb') as ofile:
             for chunk in iter(lambda: self.stream.read(16 * 1024), ''):
                 ofile.write(chunk)
         self.stream.seek(0)
@@ -116,7 +116,7 @@ class FileDataBlob(IFileData):
 
     @contextlib.contextmanager
     def open(self):
-        stream = StringIO(self.data)
+        stream = BytesIO(self.data)
         try:
             yield stream
         finally:
@@ -126,7 +126,7 @@ class FileDataBlob(IFileData):
         return self.data
 
     def as_file(self, filename):
-        with atomic_open(filename, 'w') as ofile:
+        with atomic_open(filename, 'wb') as ofile:
             ofile.write(self.data)
 
 
