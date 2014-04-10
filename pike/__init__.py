@@ -3,7 +3,7 @@ from .graph import Graph
 from .nodes import (Node, Edge, PlaceholderNode, NoopNode, SourceNode,
                     GlobNode, CoffeeNode, LessNode, MergeNode, UrlNode,
                     SplitExtNode, WriteNode, ConcatNode, FilterNode, MapNode,
-                    XargsNode, ChangeListenerNode, CacheNode)
+                    XargsNode, ChangeListenerNode, CacheNode, UglifyNode)
 from .env import (Environment, watch_graph, RenderException,
                   ShowException)
 from .exceptions import ValidationError, StopProcessing
@@ -22,10 +22,8 @@ def flaskme(app):
 
 
 # pylint: disable=C0103
-glob = GlobNode
 noop = NoopNode
-coffee = CoffeeNode
-less = LessNode
+glob = GlobNode
 merge = MergeNode
 url = UrlNode
 splitext = SplitExtNode
@@ -37,3 +35,7 @@ placeholder = PlaceholderNode
 xargs = XargsNode
 listen = ChangeListenerNode
 cache = CacheNode
+
+coffee = CoffeeNode
+less = LessNode
+uglify = UglifyNode

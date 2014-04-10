@@ -98,3 +98,20 @@ class LessNode(Node):
         item.data = FileDataBlob(run_cmd(cmd, item.data.read(), cwd=path))
         item.setext('.css')
         return item
+
+
+class UglifyNode(Node):
+
+    """
+    Run Uglifyjs
+
+    Requires uglify to be installed (npm install -g uglify-js)
+
+    """
+    name = 'uglifyjs'
+
+    def process_one(self, item):
+        cmd = ['uglifyjs', '-']
+        path = os.path.dirname(item.fullpath)
+        item.data = FileDataBlob(run_cmd(cmd, item.data.read(), cwd=path))
+        return item
