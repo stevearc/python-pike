@@ -15,6 +15,7 @@ from .items import FileMeta
 from .nodes import (ChangeListenerNode, ChangeEnforcerNode, CacheNode, Edge,
                     NoopNode)
 from .sqlitedict import SqliteDict
+from .util import resource_spec
 
 
 LOG = logging.getLogger(__name__)
@@ -393,6 +394,7 @@ class Environment(object):
         if not self._gen_files:
             raise ValueError("No generated files found. Have you run "
                              "`run_all()`?")
+        directory = resource_spec(directory)
         all_files = set()
         for fullpath in six.itervalues(self._gen_files):
             all_files.add(os.path.abspath(fullpath))
