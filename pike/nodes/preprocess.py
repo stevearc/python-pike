@@ -1,4 +1,6 @@
 """ Nodes that invoke preprocessors. """
+import posixpath
+import re
 import os
 
 from .base import Node
@@ -114,4 +116,54 @@ class UglifyNode(Node):
         cmd = ['uglifyjs', '-']
         path = os.path.dirname(item.fullpath)
         item.data = FileDataBlob(run_cmd(cmd, item.data.read(), cwd=path))
+        return item
+
+
+class CleanCssNode(Node):
+    """
+    Run cleancss
+
+    Requires clean-css to be installed (npm install -g clean-css)
+
+    """
+
+    def process_one(self, item):
+        path = os.path.dirname(item.fullpath)
+        cmd = ['cleancss', '--root', path]
+        item.data = FileDataBlob(run_cmd(cmd, item.data.read(), cwd=path))
+        return item
+
+
+class RewriteCssNode(Node):
+    """
+    Rewrites css urls
+
+    """
+    def __init__(self, prefix='', absolute=True):
+        super(RewriteCssNode, self).__init__()
+        self.prefix = prefix.strip('/')
+        if self.prefix:
+            self.prefix += '/'
+        self.absolute = absolute
+
+    def process_one(self, item):
+        pattern = r"url\('([^']*/)?(.*?)'\)"
+        if self.absolute:
+            output = []
+            cursor_pos = 0
+            data = item.data.read()
+            filepath = posixpath.split(item.filename)[0]
+            for match in re.finditer(pattern, data, re.M | re.S):
+                path = match.group(1)
+                newpath = posixpath.join(filepath, path, match.group(2))
+                fullpath = posixpath.normpath(newpath)
+                output.append(data[cursor_pos:match.start()])
+                output.append("url('%s')" % fullpath)
+                cursor_pos = match.end()
+            output.append(data[cursor_pos:])
+            text = ''.join(output)
+        else:
+            replace = r"url('%s\2')" % self.prefix
+            text = re.sub(pattern, replace, item.data.read(), re.M | re.S)
+        item.data = FileDataBlob(text)
         return item

@@ -3,7 +3,8 @@ from .graph import Graph
 from .nodes import (Node, Edge, PlaceholderNode, NoopNode, SourceNode,
                     GlobNode, CoffeeNode, LessNode, MergeNode, UrlNode,
                     SplitExtNode, WriteNode, ConcatNode, FilterNode, MapNode,
-                    XargsNode, ChangeListenerNode, CacheNode, UglifyNode)
+                    XargsNode, ChangeListenerNode, CacheNode, UglifyNode,
+                    CleanCssNode, RewriteCssNode)
 from .env import (Environment, watch_graph, RenderException,
                   ShowException)
 from .exceptions import ValidationError, StopProcessing
@@ -39,3 +40,5 @@ cache = CacheNode
 coffee = CoffeeNode
 less = LessNode
 uglify = UglifyNode
+cleancss = CleanCssNode
+rewritecss = RewriteCssNode
