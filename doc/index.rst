@@ -1,5 +1,8 @@
 Pike
 ====
+This project is now defunct. I decided to make a version in Go. It's at
+https://github.com/stevearc/pike
+
 Pike is an asset pipeline and make tool. It was created to build assets for web
 development (coffeescript, less, etc.), but it has the power and flexibility to
 replace Makefiles and other traditional build tools.
